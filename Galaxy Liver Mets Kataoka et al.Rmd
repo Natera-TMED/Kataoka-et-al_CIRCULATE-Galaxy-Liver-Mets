@@ -1,0 +1,1977 @@
+---
+title: "Galaxy Liver Mets Kataoka et al_08052024 Clinical analysis"
+output: html_notebook
+---
+
+library(swimplot)
+library(coxphf)
+library(grid)
+library(gtable)
+library(readr) 
+library(mosaic)
+library(dplyr) 
+library(survival) 
+library(survminer)
+library(gridtext)
+library(ggplot2)
+library(scales)
+library(officer)
+library(ggthemes)
+library(tidyverse)
+library(gtsummary)
+library(flextable)
+library(parameters)
+library(car)
+library(grid)
+library(ComplexHeatmap)
+library(readxl)
+library(janitor)
+library(rms)
+library(DT)
+
+#Demographics Table
+```{r}
+rm(list=ls())
+setwd("~/Downloads")
+circ_data <- read.csv("Galaxy Liver Mets Data_20240626 Complete Dataset.csv")
+circ_data <- circ_data[circ_data$LiverMets=="TRUE",]
+
+circ_data_subset <- circ_data %>%
+  select(
+    Age,
+    Gender,
+    ECOG,
+    PrimSite,
+    Mets.Type,
+    Hepatectomy,
+    NumLiverMetsGroup,
+    SizeLiverMetsmmGroup,
+    pT,
+    pN,
+    ACT,
+    Oxaliplatin.History,
+    Postop.Complication,
+    BRAF.V600E,
+    RAS,
+    MSI,
+    RFS.Event,
+    OS.months) %>%
+  mutate(
+    Age = as.numeric(Age),
+    Gender = factor(Gender, levels = c("Male", "Female")),
+    ECOG = factor(ECOG, levels = c(0, 1)),
+    PrimSite = factor(PrimSite, levels = c("Right-sided colon", "Left-sided colon")),
+    Mets.Type = factor(Mets.Type, levels = c("Synchronous", "Metachronous")),
+    Hepatectomy = factor(Hepatectomy, levels = c("Minor", "Major")),
+    NumLiverMetsGroup = factor(NumLiverMetsGroup, levels = c("1", "≥2")),
+    SizeLiverMetsmmGroup = factor(SizeLiverMetsmmGroup, levels = c("<50", "≥50")),
+    pT = factor(pT, levels = c("T1-T2", "T3-T4")),
+    pN = factor(pN, levels = c("N0", "N1-N2")),
+    ACT = factor(ACT, levels = c("TRUE", "FALSE"), labels = c("Adjuvant Chemotherapy", "Observation")),
+    Oxaliplatin.History = factor(Oxaliplatin.History, levels = c("No", "Yes")),
+    Postop.Complication = factor(Postop.Complication, levels = c("No", "Yes")),
+    BRAF.V600E = factor(BRAF.V600E, levels = c("WT", "MUT"), labels = c("BRAF wt", "BRAF V600E")),
+    RAS = factor(RAS, levels = c("WT", "MUT"), labels = c("RAS wt", "RAS mut")),
+    MSI = factor(MSI, levels = c("MSS", "MSI-High")),
+    RFS.Event = factor(RFS.Event, levels = c("TRUE", "FALSE"), labels = c("Recurrence", "No Recurrence")),
+    OS.months = as.numeric(OS.months))
+table1 <- circ_data_subset %>%
+  tbl_summary(
+    statistic = list(
+      all_continuous() ~ "{median} ({min} - {max})",
+      all_categorical() ~ "{n} ({p}%)")) %>%
+  bold_labels()
+table1
+fit1 <- as_flex_table(
+  table1,
+  include = everything(),
+  return_calls = FALSE,
+  strip_md_bold = TRUE)
+fit1
+save_as_docx(fit1, path= "~/Downloads/table1.docx")
+```
+
+
+#Demographics Table by MRD ctDNA Status
+```{r}
+rm(list=ls())
+setwd("~/Downloads")
+circ_data <- read.csv("Galaxy Liver Mets Data_20240626 Complete Dataset.csv")
+circ_data <- circ_data[circ_data$LiverMets=="TRUE",]
+
+circ_data_subset1 <- circ_data %>%
+  select(
+    Age,
+    Gender,
+    ECOG,
+    PrimSite,
+    Mets.Type,
+    Hepatectomy,
+    NumLiverMetsGroup,
+    SizeLiverMetsmmGroup,
+    pT,
+    pN,
+    ACT,
+    Oxaliplatin.History,
+    Postop.Complication,
+    BRAF.V600E,
+    RAS,
+    MSI) %>%
+  mutate(
+    Age = as.numeric(Age),
+    Gender = factor(Gender, levels = c("Male", "Female")),
+    ECOG = factor(ECOG, levels = c(0, 1)),
+    PrimSite = factor(PrimSite, levels = c("Right-sided colon", "Left-sided colon")),
+    Mets.Type = factor(Mets.Type, levels = c("Synchronous", "Metachronous")),
+    Hepatectomy = factor(Hepatectomy, levels = c("Minor", "Major")),
+    NumLiverMetsGroup = factor(NumLiverMetsGroup, levels = c("1", "≥2")),
+    SizeLiverMetsmmGroup = factor(SizeLiverMetsmmGroup, levels = c("<50", "≥50")),
+    pT = factor(pT, levels = c("T1-T2", "T3-T4")),
+    pN = factor(pN, levels = c("N0", "N1-N2")),
+    ACT = factor(ACT, levels = c("TRUE", "FALSE"), labels = c("Adjuvant Chemotherapy", "Observation")),
+    Oxaliplatin.History = factor(Oxaliplatin.History, levels = c("No", "Yes")),
+    Postop.Complication = factor(Postop.Complication, levels = c("No", "Yes")),
+    BRAF.V600E = factor(BRAF.V600E, levels = c("WT", "MUT"), labels = c("BRAF wt", "BRAF V600E")),
+    RAS = factor(RAS, levels = c("WT", "MUT"), labels = c("RAS wt", "RAS mut")),
+    MSI = factor(MSI, levels = c("MSS", "MSI-High")))
+
+circ_data1 <- read.csv("Galaxy Liver Mets Data_20240626 Complete Dataset.csv")
+circ_data1 <- circ_data1[circ_data1$LiverMets=="TRUE",]
+
+circ_data_subset2 <- circ_data %>%
+  select(
+    Age,
+    Gender,
+    ECOG,
+    PrimSite,
+    Mets.Type,
+    Hepatectomy,
+    NumLiverMetsGroup,
+    SizeLiverMetsmmGroup,
+    pT,
+    pN,
+    ACT,
+    Oxaliplatin.History,
+    Postop.Complication,
+    BRAF.V600E,
+    RAS,
+    MSI,
+    ctDNA.MRD) %>%
+  mutate(
+    Age = as.numeric(Age),
+    Gender = factor(Gender, levels = c("Male", "Female")),
+    ECOG = factor(ECOG, levels = c(0, 1)),
+    PrimSite = factor(PrimSite, levels = c("Right-sided colon", "Left-sided colon")),
+    Mets.Type = factor(Mets.Type, levels = c("Synchronous", "Metachronous")),
+    Hepatectomy = factor(Hepatectomy, levels = c("Minor", "Major")),
+    NumLiverMetsGroup = factor(NumLiverMetsGroup, levels = c("1", "≥2")),
+    SizeLiverMetsmmGroup = factor(SizeLiverMetsmmGroup, levels = c("<50", "≥50")),
+    pT = factor(pT, levels = c("T1-T2", "T3-T4")),
+    pN = factor(pN, levels = c("N0", "N1-N2")),
+    ACT = factor(ACT, levels = c("TRUE", "FALSE"), labels = c("Adjuvant Chemotherapy", "Observation")),
+    Oxaliplatin.History = factor(Oxaliplatin.History, levels = c("No", "Yes")),
+    Postop.Complication = factor(Postop.Complication, levels = c("No", "Yes")),
+    BRAF.V600E = factor(BRAF.V600E, levels = c("WT", "MUT"), labels = c("BRAF wt", "BRAF V600E")),
+    RAS = factor(RAS, levels = c("WT", "MUT"), labels = c("RAS wt", "RAS mut")),
+    MSI = factor(MSI, levels = c("MSS", "MSI-High")),
+    ctDNA.MRD = factor(ctDNA.MRD, levels = c("NEGATIVE", "POSITIVE")))
+Overall <- circ_data_subset1 %>%
+  tbl_summary(
+    statistic = list(
+      all_continuous() ~ "{median} ({min} - {max})",
+      all_categorical() ~ "{n} ({p}%)")) %>%
+  bold_labels()
+Overall
+
+ByctDNA_MRD <- circ_data_subset2 %>%
+  tbl_summary(
+    by = ctDNA.MRD, # Subgroup by ctDNA.MRD
+    statistic = list(
+      all_continuous() ~ "{median} ({min} - {max})",
+      all_categorical() ~ "{n} ({p}%)")) %>%
+  add_p(test = all_categorical() ~ "fisher.test", pvalue_fun = ~style_pvalue(p.adjust(.x, method = "bonferroni"))) %>%
+  bold_labels()
+ByctDNA_MRD
+
+merged_table <- tbl_merge(tbls=list(Overall, ByctDNA_MRD))
+merged_table
+
+fit1 <- as_flex_table(
+  merged_table,
+  include = everything(),
+  return_calls = FALSE,
+  strip_md_bold = TRUE)
+fit1
+save_as_docx(fit1, path= "~/Downloads/merged_table.docx")
+```
+
+#ctDNA Detection Rates by Window and Stages
+```{r}
+#ctDNA at Baseline
+rm(list=ls())
+setwd("~/Downloads")
+circ_data <- read.csv("Galaxy Liver Mets Data_20240626 Complete Dataset.csv")
+circ_data <- circ_data[circ_data$LiverMets=="TRUE",]
+circ_data <- circ_data[circ_data$ctDNA.Baseline!="",]
+circ_data$ctDNA.Baseline <- factor(circ_data$ctDNA.Baseline, levels=c("NEGATIVE","POSITIVE"))
+circ_data$Stage <- factor(circ_data$Stage, levels=c("IV"))
+positive_counts_by_stage <- aggregate(circ_data$ctDNA.Baseline == "POSITIVE", by=list(circ_data$Stage), FUN=sum)
+total_counts_by_stage <- aggregate(circ_data$ctDNA.Baseline, by=list(circ_data$Stage), FUN=length)
+combined_data <- data.frame(
+  Stage = total_counts_by_stage$Group.1,
+  Total_Count = total_counts_by_stage$x,
+  Positive_Count = positive_counts_by_stage$x,
+  Rate = (positive_counts_by_stage$x / total_counts_by_stage$x) * 100  # Convert to percentage
+)
+combined_data$Rate <- sprintf("%.2f%%", combined_data$Rate)
+overall_total_count <- nrow(circ_data)
+overall_positive_count <- nrow(circ_data[circ_data$ctDNA.Baseline == "POSITIVE",])
+overall_positivity_rate <- (overall_positive_count / overall_total_count) * 100  # Convert to percentage
+overall_row <- data.frame(
+  Stage = "Overall",
+  Total_Count = overall_total_count,
+  Positive_Count = overall_positive_count,
+  Rate = sprintf("%.2f%%", overall_positivity_rate)
+)
+combined_data <- rbind(combined_data, overall_row)
+print(combined_data)
+
+#ctDNA at MRD Window
+rm(list=ls())
+setwd("~/Downloads")
+circ_data <- read.csv("Galaxy Liver Mets Data_20240626 Complete Dataset.csv")
+circ_data <- circ_data[circ_data$LiverMets=="TRUE",]
+circ_data <- circ_data[circ_data$ctDNA.MRD!="",]
+circ_data$ctDNA.MRD <- factor(circ_data$ctDNA.MRD, levels=c("NEGATIVE","POSITIVE"))
+circ_data$Stage <- factor(circ_data$Stage, levels=c("IV"))
+positive_counts_by_stage <- aggregate(circ_data$ctDNA.MRD == "POSITIVE", by=list(circ_data$Stage), FUN=sum)
+total_counts_by_stage <- aggregate(circ_data$ctDNA.MRD, by=list(circ_data$Stage), FUN=length)
+combined_data <- data.frame(
+  Stage = total_counts_by_stage$Group.1,
+  Total_Count = total_counts_by_stage$x,
+  Positive_Count = positive_counts_by_stage$x,
+  Rate = (positive_counts_by_stage$x / total_counts_by_stage$x) * 100  # Convert to percentage
+)
+combined_data$Rate <- sprintf("%.2f%%", combined_data$Rate)
+overall_total_count <- nrow(circ_data)
+overall_positive_count <- nrow(circ_data[circ_data$ctDNA.MRD == "POSITIVE",])
+overall_positivity_rate <- (overall_positive_count / overall_total_count) * 100  # Convert to percentage
+overall_row <- data.frame(
+  Stage = "Overall",
+  Total_Count = overall_total_count,
+  Positive_Count = overall_positive_count,
+  Rate = sprintf("%.2f%%", overall_positivity_rate)
+)
+combined_data <- rbind(combined_data, overall_row)
+print(combined_data)
+
+#ctDNA at Surveillance Window
+rm(list=ls())
+setwd("~/Downloads")
+circ_data <- read.csv("Galaxy Liver Mets Data_20240626 Complete Dataset.csv")
+circ_data <- circ_data[circ_data$LiverMets=="TRUE",]
+circ_data$ctDNA.Surveillance <- factor(circ_data$ctDNA.Surveillance, levels=c("NEGATIVE","POSITIVE"))
+circ_data <- subset(circ_data, ctDNA.Surveillance %in% c("NEGATIVE", "POSITIVE"))
+circ_data$Stage <- factor(circ_data$Stage, levels=c("IV"))
+positive_counts_by_stage <- aggregate(circ_data$ctDNA.Surveillance == "POSITIVE", by=list(circ_data$Stage), FUN=sum)
+total_counts_by_stage <- aggregate(circ_data$ctDNA.Surveillance, by=list(circ_data$Stage), FUN=length)
+combined_data <- data.frame(
+  Stage = total_counts_by_stage$Group.1,
+  Total_Count = total_counts_by_stage$x,
+  Positive_Count = positive_counts_by_stage$x,
+  Rate = (positive_counts_by_stage$x / total_counts_by_stage$x) * 100  # Convert to percentage
+)
+combined_data$Rate <- sprintf("%.2f%%", combined_data$Rate)
+overall_total_count <- nrow(circ_data)
+overall_positive_count <- nrow(circ_data[circ_data$ctDNA.Surveillance == "POSITIVE",])
+overall_positivity_rate <- (overall_positive_count / overall_total_count) * 100  # Convert to percentage
+overall_row <- data.frame(
+  Stage = "Overall",
+  Total_Count = overall_total_count,
+  Positive_Count = overall_positive_count,
+  Rate = sprintf("%.2f%%", overall_positivity_rate)
+)
+combined_data <- rbind(combined_data, overall_row)
+print(combined_data)
+```
+
+
+
+#ctDNA Detection Rates by Window and Synchronicity
+```{r}
+#ctDNA at Baseline
+rm(list=ls())
+setwd("~/Downloads")
+circ_data <- read.csv("Galaxy Liver Mets Data_20240626 Complete Dataset.csv")
+circ_data <- circ_data[circ_data$LiverMets=="TRUE",]
+circ_data <- circ_data[circ_data$ctDNA.Baseline!="",]
+circ_data$ctDNA.Baseline <- factor(circ_data$ctDNA.Baseline, levels=c("NEGATIVE","POSITIVE"))
+circ_data$Mets.Type <- factor(circ_data$Mets.Type, levels = c("Metachronous", "Synchronous"))
+positive_counts_by_stage <- aggregate(circ_data$ctDNA.Baseline == "POSITIVE", by=list(circ_data$Mets.Type), FUN=sum)
+total_counts_by_stage <- aggregate(circ_data$ctDNA.Baseline, by=list(circ_data$Mets.Type), FUN=length)
+combined_data <- data.frame(
+  Stage = total_counts_by_stage$Group.1,
+  Total_Count = total_counts_by_stage$x,
+  Positive_Count = positive_counts_by_stage$x,
+  Rate = (positive_counts_by_stage$x / total_counts_by_stage$x) * 100  # Convert to percentage
+)
+combined_data$Rate <- sprintf("%.2f%%", combined_data$Rate)
+overall_total_count <- nrow(circ_data)
+overall_positive_count <- nrow(circ_data[circ_data$ctDNA.Baseline == "POSITIVE",])
+overall_positivity_rate <- (overall_positive_count / overall_total_count) * 100  # Convert to percentage
+overall_row <- data.frame(
+  Stage = "Overall",
+  Total_Count = overall_total_count,
+  Positive_Count = overall_positive_count,
+  Rate = sprintf("%.2f%%", overall_positivity_rate)
+)
+combined_data <- rbind(combined_data, overall_row)
+print(combined_data)
+
+#ctDNA at MRD Window
+rm(list=ls())
+setwd("~/Downloads")
+circ_data <- read.csv("Galaxy Liver Mets Data_20240626 Complete Dataset.csv")
+circ_data <- circ_data[circ_data$LiverMets=="TRUE",]
+circ_data <- circ_data[circ_data$ctDNA.MRD!="",]
+circ_data$ctDNA.MRD <- factor(circ_data$ctDNA.MRD, levels=c("NEGATIVE","POSITIVE"))
+circ_data$Mets.Type <- factor(circ_data$Mets.Type, levels = c("Metachronous", "Synchronous"))
+positive_counts_by_stage <- aggregate(circ_data$ctDNA.MRD == "POSITIVE", by=list(circ_data$Mets.Type), FUN=sum)
+total_counts_by_stage <- aggregate(circ_data$ctDNA.MRD, by=list(circ_data$Mets.Type), FUN=length)
+combined_data <- data.frame(
+  Mets.Type = total_counts_by_stage$Group.1,
+  Total_Count = total_counts_by_stage$x,
+  Positive_Count = positive_counts_by_stage$x,
+  Rate = (positive_counts_by_stage$x / total_counts_by_stage$x) * 100  # Convert to percentage
+)
+combined_data$Rate <- sprintf("%.2f%%", combined_data$Rate)
+overall_total_count <- nrow(circ_data)
+overall_positive_count <- nrow(circ_data[circ_data$ctDNA.MRD == "POSITIVE",])
+overall_positivity_rate <- (overall_positive_count / overall_total_count) * 100  # Convert to percentage
+overall_row <- data.frame(
+  Mets.Type = "Overall",
+  Total_Count = overall_total_count,
+  Positive_Count = overall_positive_count,
+  Rate = sprintf("%.2f%%", overall_positivity_rate)
+)
+combined_data <- rbind(combined_data, overall_row)
+print(combined_data)
+
+#ctDNA at Surveillance Window
+rm(list=ls())
+setwd("~/Downloads")
+circ_data <- read.csv("Galaxy Liver Mets Data_20240626 Complete Dataset.csv")
+circ_data <- circ_data[circ_data$LiverMets=="TRUE",]
+circ_data$ctDNA.Surveillance <- factor(circ_data$ctDNA.Surveillance, levels=c("NEGATIVE","POSITIVE"))
+circ_data <- subset(circ_data, ctDNA.Surveillance %in% c("NEGATIVE", "POSITIVE"))
+circ_data$Mets.Type <- factor(circ_data$Mets.Type, levels = c("Metachronous", "Synchronous"))
+positive_counts_by_stage <- aggregate(circ_data$ctDNA.Surveillance == "POSITIVE", by=list(circ_data$Mets.Type), FUN=sum)
+total_counts_by_stage <- aggregate(circ_data$ctDNA.Surveillance, by=list(circ_data$Mets.Type), FUN=length)
+combined_data <- data.frame(
+  Mets.Type = total_counts_by_stage$Group.1,
+  Total_Count = total_counts_by_stage$x,
+  Positive_Count = positive_counts_by_stage$x,
+  Rate = (positive_counts_by_stage$x / total_counts_by_stage$x) * 100  # Convert to percentage
+)
+combined_data$Rate <- sprintf("%.2f%%", combined_data$Rate)
+overall_total_count <- nrow(circ_data)
+overall_positive_count <- nrow(circ_data[circ_data$ctDNA.Surveillance == "POSITIVE",])
+overall_positivity_rate <- (overall_positive_count / overall_total_count) * 100  # Convert to percentage
+overall_row <- data.frame(
+  Mets.Type = "Overall",
+  Total_Count = overall_total_count,
+  Positive_Count = overall_positive_count,
+  Rate = sprintf("%.2f%%", overall_positivity_rate)
+)
+combined_data <- rbind(combined_data, overall_row)
+print(combined_data)
+```
+
+
+
+#Barplot with Detection Rates at the MRD and Surveillance Windows by Synchronicity
+```{r}
+#Detection rate at the Surveillance Window
+rm(list=ls())
+setwd("~/Downloads")
+circ_data <- read.csv("Galaxy Liver Mets Data_20240626 Complete Dataset.csv")
+circ_data <- circ_data[circ_data$LiverMets=="TRUE",]
+
+circ_data$ctDNA.MRD <- factor(circ_data$ctDNA.MRD, levels = c("NEGATIVE", "POSITIVE"), labels = c("Negative", "Positive"))
+circ_data$Mets.Type <- factor(circ_data$Mets.Type, levels = c("Metachronous", "Synchronous"))
+contingency_table <- table(circ_data$Mets.Type, circ_data$ctDNA.MRD)
+chi_square_test <- chisq.test(contingency_table)
+print(chi_square_test)
+fisher_exact_test <- fisher.test(contingency_table)
+print(fisher_exact_test)
+print(contingency_table)
+p_values <- c(chi_square_test$p.value, fisher_exact_test$p.value)
+p_adjusted <- p.adjust(p_values, method = "bonferroni")
+names(p_adjusted) <- c("Chi-Square Test", "Fisher's Exact Test")
+print(p_adjusted)
+table_df <- as.data.frame(contingency_table)
+table_df$Total <- ave(table_df$Freq, table_df$Var1, FUN = sum)
+table_df$Percentage <- table_df$Freq / table_df$Total
+table_df$MiddlePercentage <- table_df$Percentage / 2
+ggplot(table_df, aes(x = Var1, y = Percentage, fill = Var2)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(y = MiddlePercentage, label = Freq), position = "stack", color = "black", vjust = 1.5, size = 7) +
+  theme_minimal() +
+  labs(title = "Patients with CLM - ctDNA MRD Window", 
+       x = "Synchronicity", 
+       y = "Patients (%)", 
+       fill = "ctDNA MRD Window",
+       caption = paste("Chi-squared test p-value: ", format.pval(chi_square_test$p.value), "; Bonferroni corrected p-value: ", format.pval(p_adjusted["Chi-Square Test"]))) +
+  scale_y_continuous(labels = scales::percent_format()) +
+  scale_fill_manual(values = c("Negative" = "blue", "Positive" = "red")) + # define custom colors
+  theme(axis.text.x = element_text(angle = 0, hjust = 1.5, size = 14), # increase x-axis text size
+        axis.text.y = element_text(size = 14, color = "black"), # increase y-axis text size
+        axis.title.x = element_text(size = 14, color = "black"), # increase x-axis label size
+        axis.title.y = element_text(size = 14, color = "black"), # increase y-axis label size
+        legend.text = element_text(size = 12, color = "black"))  # increase Recurrence label size
+
+#Detection rate at the Surveillance Window
+rm(list=ls())
+setwd("~/Downloads")
+circ_data <- read.csv("Galaxy Liver Mets Data_20240626 Complete Dataset.csv")
+circ_data <- circ_data[circ_data$LiverMets=="TRUE",]
+
+circ_data$ctDNA.Surveillance <- factor(circ_data$ctDNA.Surveillance, levels = c("NEGATIVE", "POSITIVE"), labels = c("Negative", "Positive"))
+circ_data$Mets.Type <- factor(circ_data$Mets.Type, levels = c("Metachronous", "Synchronous"))
+contingency_table <- table(circ_data$Mets.Type, circ_data$ctDNA.Surveillance)
+chi_square_test <- chisq.test(contingency_table)
+print(chi_square_test)
+fisher_exact_test <- fisher.test(contingency_table)
+print(fisher_exact_test)
+print(contingency_table)
+p_values <- c(chi_square_test$p.value, fisher_exact_test$p.value)
+p_adjusted <- p.adjust(p_values, method = "bonferroni")
+names(p_adjusted) <- c("Chi-Square Test", "Fisher's Exact Test")
+print(p_adjusted)
+table_df <- as.data.frame(contingency_table)
+table_df$Total <- ave(table_df$Freq, table_df$Var1, FUN = sum)
+table_df$Percentage <- table_df$Freq / table_df$Total
+table_df$MiddlePercentage <- table_df$Percentage / 2
+ggplot(table_df, aes(x = Var1, y = Percentage, fill = Var2)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(y = MiddlePercentage, label = Freq), position = "stack", color = "black", vjust = 1.5, size = 7) +
+  theme_minimal() +
+  labs(title = "Patients with CLM - ctDNA Surveillance Window", 
+       x = "Synchronicity", 
+       y = "Patients (%)", 
+       fill = "ctDNA Surveillance Window",
+       caption = paste("Chi-squared test p-value: ", format.pval(chi_square_test$p.value), "; Bonferroni corrected p-value: ", format.pval(p_adjusted["Chi-Square Test"]))) +
+  scale_y_continuous(labels = scales::percent_format()) +
+  scale_fill_manual(values = c("Negative" = "blue", "Positive" = "red")) + # define custom colors
+  theme(axis.text.x = element_text(angle = 0, hjust = 1.5, size = 14), # increase x-axis text size
+        axis.text.y = element_text(size = 14, color = "black"), # increase y-axis text size
+        axis.title.x = element_text(size = 14, color = "black"), # increase x-axis label size
+        axis.title.y = element_text(size = 14, color = "black"), # increase y-axis label size
+        legend.text = element_text(size = 12, color = "black"))  # increase Recurrence label size
+```
+
+#Barplot with Detection Rates at pre-op and ctDNA MRD by pre-OP CEA
+```{r}
+rm(list=ls())
+setwd("~/Downloads")
+circ_data <- read.csv("Galaxy Liver Mets Data_20240626 Complete Dataset.csv")
+circ_data <- circ_data[circ_data$LiverMets=="TRUE",]
+
+circ_data$ctDNA.Baseline <- factor(circ_data$ctDNA.Baseline, levels = c("NEGATIVE", "POSITIVE"), labels = c("Negative", "Positive"))
+circ_data$CEA.Baseline <- factor(circ_data$CEA.Baseline, levels=c("NEGATIVE","POSITIVE"), labels = c("Normal", "Elevated"))
+contingency_table <- table(circ_data$CEA.Baseline, circ_data$ctDNA.Baseline)
+chi_square_test <- chisq.test(contingency_table)
+print(chi_square_test)
+fisher_exact_test <- fisher.test(contingency_table)
+print(fisher_exact_test)
+print(contingency_table)
+p_values <- c(chi_square_test$p.value, fisher_exact_test$p.value)
+p_adjusted <- p.adjust(p_values, method = "bonferroni")
+names(p_adjusted) <- c("Chi-Square Test", "Fisher's Exact Test")
+print(p_adjusted)
+table_df <- as.data.frame(contingency_table)
+table_df$Total <- ave(table_df$Freq, table_df$Var1, FUN = sum)
+table_df$Percentage <- table_df$Freq / table_df$Total
+table_df$MiddlePercentage <- table_df$Percentage / 2
+ggplot(table_df, aes(x = Var1, y = Percentage, fill = Var2)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(y = MiddlePercentage, label = Freq), position = "stack", color = "black", vjust = 1.5, size = 7) +
+  theme_minimal() +
+  labs(title = "Pre-op CEA & Pre-op ctDNA", 
+       x = "Pre-op CEA", 
+       y = "Patients (%)", 
+       fill = "ctDNA pre-op",
+       caption = paste("Chi-squared test p-value: ", format.pval(chi_square_test$p.value), "; Bonferroni corrected p-value: ", format.pval(p_adjusted["Chi-Square Test"]))) +
+  scale_y_continuous(labels = scales::percent_format()) +
+  scale_fill_manual(values = c("Negative" = "blue", "Positive" = "red")) + # define custom colors
+  theme(axis.text.x = element_text(angle = 0, hjust = 1.5, size = 14), # increase x-axis text size
+        axis.text.y = element_text(size = 14, color = "black"), # increase y-axis text size
+        axis.title.x = element_text(size = 14, color = "black"), # increase x-axis label size
+        axis.title.y = element_text(size = 14, color = "black"), # increase y-axis label size
+        legend.text = element_text(size = 12, color = "black"))  # increase Recurrence label size
+
+rm(list=ls())
+setwd("~/Downloads")
+circ_data <- read.csv("Galaxy Liver Mets Data_20240626 Complete Dataset.csv")
+circ_data <- circ_data[circ_data$LiverMets=="TRUE",]
+
+circ_data$ctDNA.MRD <- factor(circ_data$ctDNA.MRD, levels = c("NEGATIVE", "POSITIVE"), labels = c("Negative", "Positive"))
+circ_data$CEA.Baseline <- factor(circ_data$CEA.Baseline, levels=c("NEGATIVE","POSITIVE"), labels = c("Normal", "Elevated"))
+contingency_table <- table(circ_data$CEA.Baseline, circ_data$ctDNA.MRD)
+chi_square_test <- chisq.test(contingency_table)
+print(chi_square_test)
+fisher_exact_test <- fisher.test(contingency_table)
+print(fisher_exact_test)
+print(contingency_table)
+p_values <- c(chi_square_test$p.value, fisher_exact_test$p.value)
+p_adjusted <- p.adjust(p_values, method = "bonferroni")
+names(p_adjusted) <- c("Chi-Square Test", "Fisher's Exact Test")
+print(p_adjusted)
+table_df <- as.data.frame(contingency_table)
+table_df$Total <- ave(table_df$Freq, table_df$Var1, FUN = sum)
+table_df$Percentage <- table_df$Freq / table_df$Total
+table_df$MiddlePercentage <- table_df$Percentage / 2
+ggplot(table_df, aes(x = Var1, y = Percentage, fill = Var2)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(y = MiddlePercentage, label = Freq), position = "stack", color = "black", vjust = 1.5, size = 7) +
+  theme_minimal() +
+  labs(title = "Pre-op CEA & ctDNA MRD", 
+       x = "Pre-op CEA", 
+       y = "Patients (%)", 
+       fill = "ctDNA at MRD",
+       caption = paste("Chi-squared test p-value: ", format.pval(chi_square_test$p.value), "; Bonferroni corrected p-value: ", format.pval(p_adjusted["Chi-Square Test"]))) +
+  scale_y_continuous(labels = scales::percent_format()) +
+  scale_fill_manual(values = c("Negative" = "blue", "Positive" = "red")) + # define custom colors
+  theme(axis.text.x = element_text(angle = 0, hjust = 1.5, size = 14), # increase x-axis text size
+        axis.text.y = element_text(size = 14, color = "black"), # increase y-axis text size
+        axis.title.x = element_text(size = 14, color = "black"), # increase x-axis label size
+        axis.title.y = element_text(size = 14, color = "black"), # increase y-axis label size
+        legend.text = element_text(size = 12, color = "black"))  # increase Recurrence label size
+```
+
+#DFS by ctDNA at the MRD Window - Landmark MRD timepoint
+```{r}
+rm(list=ls())
+setwd("~/Downloads")
+circ_data <- read.csv("Galaxy Liver Mets Data_20240626 Complete Dataset.csv")
+circ_data <- circ_data[circ_data$LiverMets=="TRUE",]
+circ_data <- circ_data[circ_data$ctDNA.MRD!="",]
+circ_data <- circ_data[circ_data$DFS.MRD.months>=0,]
+circ_datadf <- as.data.frame(circ_data)
+
+survfit(Surv(time = circ_data$DFS.MRD.months, event = circ_data$DFS.Event)~ctDNA.MRD, data = circ_data)
+event_summary <- circ_data %>%
+  group_by(ctDNA.MRD) %>%
+  summarise(
+    Total = n(),
+    Events = sum(DFS.Event),
+    Fraction = Events / n(),
+    Percentage = (Events / n()) * 100
+  )
+print(event_summary)
+surv_object <-Surv(time = circ_data$DFS.MRD.months, event = circ_data$DFS.Event)
+KM_curve <- survfit(surv_object ~ ctDNA.MRD, data = circ_data,conf.int=0.95,conf.type="log-log") 
+ggsurvplot(KM_curve, data = circ_data, pval = FALSE, conf.int = FALSE, risk.table = TRUE, break.time.by=6, palette=c("blue","red"), title="DFS - ctDNA MRD window", ylab= "Disease-Free Survival", xlab="Time from Landmark Time point (Months)", legend.labs=c("ctDNA Negative", "ctDNA Positive"), legend.title="")
+summary(KM_curve, times= c(24, 30, 36))
+circ_data$ctDNA.MRD <- factor(circ_data$ctDNA.MRD, levels=c("NEGATIVE","POSITIVE"))
+cox_fit <- coxph(surv_object ~ ctDNA.MRD, data=circ_data) 
+ggforest(cox_fit,data = circ_data)
+summary(cox_fit)
+cox_fit_summary <- summary(cox_fit)
+
+# Extract values for HR, 95% CI, and p-value
+HR <- cox_fit_summary$coefficients[2]
+lower_CI <- cox_fit_summary$conf.int[3]
+upper_CI <- cox_fit_summary$conf.int[4]
+p_value <- cox_fit_summary$coefficients[5]
+label_text <- paste0("HR = ", round(HR, 2), " (", round(lower_CI, 2), "-", round(upper_CI, 2), "); p = ", round(p_value, 3))
+print(label_text)
+
+#Fisher test for DFS percentages at 24, 30, and 36 months
+dfs_times <- c(24, 30, 36)
+p_values <- sapply(dfs_times, function(time) {
+  neg_count <- sum(circ_data$ctDNA.MRD == "NEGATIVE" & circ_data$DFS.MRD.months >= time & circ_data$DFS.Event == 0)
+  pos_count <- sum(circ_data$ctDNA.MRD == "POSITIVE" & circ_data$DFS.MRD.months >= time & circ_data$DFS.Event == 0)
+  neg_total <- sum(circ_data$ctDNA.MRD == "NEGATIVE")
+  pos_total <- sum(circ_data$ctDNA.MRD == "POSITIVE")
+  
+  neg_surv <- neg_total - sum(circ_data$ctDNA.MRD == "NEGATIVE" & circ_data$DFS.Event == 1 & circ_data$DFS.MRD.months < time)
+  pos_surv <- pos_total - sum(circ_data$ctDNA.MRD == "POSITIVE" & circ_data$DFS.Event == 1 & circ_data$DFS.MRD.months < time)
+  
+  surv_matrix <- matrix(c(neg_surv, pos_surv, neg_total - neg_surv, pos_total - pos_surv), nrow = 2)
+  test_result <- fisher.test(surv_matrix)
+  return(test_result$p.value)
+})
+names(p_values) <- paste0("p-value at ", dfs_times, " months")
+print(p_values)
+
+p_values_adjusted <- p.adjust(p_values, method = "bonferroni")
+names(p_values_adjusted) <- paste0("Corrected p-value at ", dfs_times, " months")
+print(p_values_adjusted)
+```
+
+
+
+
+#OS by ctDNA at the MRD Window - Landmark MRD timepoint
+```{r}
+rm(list=ls())
+setwd("~/Downloads")
+circ_data <- read.csv("Galaxy Liver Mets Data_20240626 Complete Dataset.csv")
+circ_data <- circ_data[circ_data$LiverMets=="TRUE",]
+circ_data <- circ_data[circ_data$ctDNA.MRD!="",]
+circ_data <- circ_data[circ_data$OS.MRD.months>=0,]
+circ_datadf <- as.data.frame(circ_data)
+
+survfit(Surv(time = circ_data$OS.MRD.months, event = circ_data$OS.Event)~ctDNA.MRD, data = circ_data)
+event_summary <- circ_data %>%
+  group_by(ctDNA.MRD) %>%
+  summarise(
+    Total = n(),
+    Events = sum(OS.Event),
+    Fraction = Events / n(),
+    Percentage = (Events / n()) * 100
+  )
+print(event_summary)
+surv_object <-Surv(time = circ_data$OS.MRD.months, event = circ_data$OS.Event)
+KM_curve <- survfit(surv_object ~ ctDNA.MRD, data = circ_data,conf.int=0.95,conf.type="log-log") 
+ggsurvplot(KM_curve, data = circ_data, pval = FALSE, conf.int = FALSE, risk.table = TRUE, break.time.by=6, palette=c("blue","red"), title="OS - ctDNA MRD window | All stages", ylab= "Overall Survival", xlab="Time from Landmark Time point (Months)", legend.labs=c("ctDNA Negative", "ctDNA Positive"), legend.title="")
+summary(KM_curve, times= c(24, 30, 36))
+circ_data$ctDNA.MRD <- factor(circ_data$ctDNA.MRD, levels=c("NEGATIVE","POSITIVE"))
+cox_fit <- coxph(surv_object ~ ctDNA.MRD, data=circ_data) 
+ggforest(cox_fit,data = circ_data)
+summary(cox_fit)
+cox_fit_summary <- summary(cox_fit)
+
+# Extract values for HR, 95% CI, and p-value
+HR <- cox_fit_summary$coefficients[2]
+lower_CI <- cox_fit_summary$conf.int[3]
+upper_CI <- cox_fit_summary$conf.int[4]
+p_value <- cox_fit_summary$coefficients[5]
+label_text <- paste0("HR = ", round(HR, 2), " (", round(lower_CI, 2), "-", round(upper_CI, 2), "); p = ", round(p_value, 4))
+print(label_text)
+
+#Fisher test for OS percentages at 24, 30, and 36 months
+os_times <- c(24, 30, 36)
+p_values <- sapply(os_times, function(time) {
+  neg_count <- sum(circ_data$ctDNA.MRD == "NEGATIVE" & circ_data$OS.MRD.months >= time & circ_data$OS.Event == 0)
+  pos_count <- sum(circ_data$ctDNA.MRD == "POSITIVE" & circ_data$OS.MRD.months >= time & circ_data$OS.Event == 0)
+  neg_total <- sum(circ_data$ctDNA.MRD == "NEGATIVE")
+  pos_total <- sum(circ_data$ctDNA.MRD == "POSITIVE")
+  
+  neg_surv <- neg_total - sum(circ_data$ctDNA.MRD == "NEGATIVE" & circ_data$OS.Event == 1 & circ_data$OS.MRD.months < time)
+  pos_surv <- pos_total - sum(circ_data$ctDNA.MRD == "POSITIVE" & circ_data$OS.Event == 1 & circ_data$OS.MRD.months < time)
+  
+  surv_matrix <- matrix(c(neg_surv, pos_surv, neg_total - neg_surv, pos_total - pos_surv), nrow = 2)
+  test_result <- fisher.test(surv_matrix)
+  return(test_result$p.value)
+})
+names(p_values) <- paste0("p-value at ", os_times, " months")
+print(p_values)
+
+p_values_adjusted <- p.adjust(p_values, method = "bonferroni")
+names(p_values_adjusted) <- paste0("Corrected p-value at ", os_times, " months")
+print(p_values_adjusted)
+```
+
+
+
+
+#Multivariate cox regression at MRD Window for DFS - Landmark MRD timepoint
+```{r}
+rm(list=ls())
+setwd("~/Downloads")
+circ_data <- read.csv("Galaxy Liver Mets Data_20240626 Complete Dataset.csv")
+circ_data <- circ_data[circ_data$LiverMets=="TRUE",]
+circ_data <- circ_data[circ_data$ctDNA.MRD!="",]
+circ_data <- circ_data[circ_data$DFS.MRD.months>=0,]
+circ_datadf <- as.data.frame(circ_data)
+
+circ_data$ctDNA.MRD <- factor(circ_data$ctDNA.MRD, levels=c("NEGATIVE","POSITIVE"), labels = c("Negative", "Positive"))
+circ_data$CEA.Baseline <- factor(circ_data$CEA.Baseline, levels=c("NEGATIVE","POSITIVE"), labels = c("Normal", "Elevated"))
+circ_data$Gender <- factor(circ_data$Gender, levels = c("Female", "Male"))
+circ_data$Age.Group <- factor(circ_data$Age.Group, levels = c("1", "2"), labels = c("<70", ">70"))
+circ_data$PrimSite <- factor(circ_data$PrimSite, levels = c("Right-sided colon", "Left-sided colon"), labels = c("Right-sided", "Left-sided"))
+circ_data$NumLiverMetsGroup <- factor(circ_data$NumLiverMetsGroup, levels = c("1", "≥2"))
+circ_data$SizeLiverMetsmmGroup <- factor(circ_data$SizeLiverMetsmmGroup, levels = c("<50", "≥50"))
+circ_data$ECOG <- factor(circ_data$ECOG, levels = c("0", "1"))
+circ_data$pT <- factor(circ_data$pT, levels = c("T1-T2", "T3-T4"))
+circ_data$pN <- factor(circ_data$pN, levels = c("N0", "N1-N2"))
+circ_data$ACT <- factor(circ_data$ACT, levels = c("FALSE", "TRUE"), labels = c("Observation", "Chemotherapy"))
+circ_data$Postop.Complication <- factor(circ_data$Postop.Complication, levels = c("No", "Yes"))
+circ_data$Oxaliplatin.History <- factor(circ_data$Oxaliplatin.History, levels = c("No", "Yes"))
+circ_data$Mets.Type <- factor(circ_data$Mets.Type, levels = c("Metachronous", "Synchronous"))
+circ_data$MSI <- factor(circ_data$MSI, levels = c("MSS", "MSI-High"), labels = c("MSS", "MSI-High"))
+circ_data$BRAF.V600E <- factor(circ_data$BRAF.V600E, levels = c("WT", "MUT"), labels = c("Wild-Type", "V600E"))
+circ_data$RAS <- factor(circ_data$RAS, levels = c("WT", "MUT"), labels = c("Wild-Type", "Mutant"))
+surv_object <- Surv(time = circ_data$DFS.MRD.months, event = circ_data$DFS.Event) 
+cox_fit <- coxph(surv_object ~ ctDNA.MRD + CEA.Baseline + Age.Group + PrimSite + NumLiverMetsGroup + SizeLiverMetsmmGroup + pT + pN + RAS + Mets.Type + Postop.Complication + Oxaliplatin.History, data=circ_data) 
+ggforest(cox_fit, data = circ_data, main = "Multivariate Regression Model for DFS", refLabel = "Reference Group")
+test.ph <- cox.zph(cox_fit)
+```
+
+
+#Multivariate cox regression at MRD Window for DFS - ctDNA MRD Positive Landmark MRD timepoint
+```{r}
+rm(list=ls())
+setwd("~/Downloads")
+circ_data <- read.csv("Galaxy Liver Mets Data_20240626 Complete Dataset.csv")
+circ_data <- circ_data[circ_data$LiverMets=="TRUE",]
+circ_data <- circ_data[circ_data$ctDNA.MRD!="",]
+circ_data <- circ_data[circ_data$DFS.MRD.months>=0,]
+circ_data <- circ_data[circ_data$ctDNA.MRD=="POSITIVE",]
+circ_datadf <- as.data.frame(circ_data)
+
+circ_data$CEA.Baseline <- factor(circ_data$CEA.Baseline, levels=c("NEGATIVE","POSITIVE"), labels = c("Normal", "Elevated"))
+circ_data$Gender <- factor(circ_data$Gender, levels = c("Female", "Male"))
+circ_data$Age.Group <- factor(circ_data$Age.Group, levels = c("1", "2"), labels = c("<70", ">70"))
+circ_data$PrimSite <- factor(circ_data$PrimSite, levels = c("Right-sided colon", "Left-sided colon"), labels = c("Right-sided", "Left-sided"))
+circ_data$NumLiverMetsGroup <- factor(circ_data$NumLiverMetsGroup, levels = c("1", "≥2"))
+circ_data$SizeLiverMetsmmGroup <- factor(circ_data$SizeLiverMetsmmGroup, levels = c("<50", "≥50"))
+circ_data$ECOG <- factor(circ_data$ECOG, levels = c("0", "1"))
+circ_data$pT <- factor(circ_data$pT, levels = c("T1-T2", "T3-T4"))
+circ_data$pN <- factor(circ_data$pN, levels = c("N0", "N1-N2"))
+circ_data$ACT <- factor(circ_data$ACT, levels = c("FALSE", "TRUE"), labels = c("Observation", "Chemotherapy"))
+circ_data$Postop.Complication <- factor(circ_data$Postop.Complication, levels = c("No", "Yes"))
+circ_data$Oxaliplatin.History <- factor(circ_data$Oxaliplatin.History, levels = c("No", "Yes"))
+circ_data$Mets.Type <- factor(circ_data$Mets.Type, levels = c("Metachronous", "Synchronous"))
+circ_data$MSI <- factor(circ_data$MSI, levels = c("MSS", "MSI-High"), labels = c("MSS", "MSI-High"))
+circ_data$BRAF.V600E <- factor(circ_data$BRAF.V600E, levels = c("WT", "MUT"), labels = c("Wild-Type", "V600E"))
+circ_data$RAS <- factor(circ_data$RAS, levels = c("WT", "MUT"), labels = c("Wild-Type", "Mutant"))
+surv_object <- Surv(time = circ_data$DFS.MRD.months, event = circ_data$DFS.Event) 
+cox_fit <- coxph(surv_object ~ CEA.Baseline + Age.Group + PrimSite + NumLiverMetsGroup + SizeLiverMetsmmGroup + pT + pN + RAS + Mets.Type + Postop.Complication + Oxaliplatin.History, data=circ_data) 
+ggforest(cox_fit, data = circ_data, main = "Multivariate Regression Model for DFS - ctDNA MRD Positive", refLabel = "Reference Group")
+test.ph <- cox.zph(cox_fit)
+```
+
+
+#Multivariate cox regression at MRD Window for DFS - ctDNA MRD Negative Landmark MRD timepoint
+```{r}
+rm(list=ls())
+setwd("~/Downloads")
+circ_data <- read.csv("Galaxy Liver Mets Data_20240626 Complete Dataset.csv")
+circ_data <- circ_data[circ_data$LiverMets=="TRUE",]
+circ_data <- circ_data[circ_data$ctDNA.MRD!="",]
+circ_data <- circ_data[circ_data$DFS.MRD.months>=0,]
+circ_data <- circ_data[circ_data$ctDNA.MRD=="NEGATIVE",]
+circ_datadf <- as.data.frame(circ_data)
+
+circ_data$CEA.Baseline <- factor(circ_data$CEA.Baseline, levels=c("NEGATIVE","POSITIVE"), labels = c("Normal", "Elevated"))
+circ_data$Gender <- factor(circ_data$Gender, levels = c("Female", "Male"))
+circ_data$Age.Group <- factor(circ_data$Age.Group, levels = c("1", "2"), labels = c("<70", ">70"))
+circ_data$PrimSite <- factor(circ_data$PrimSite, levels = c("Right-sided colon", "Left-sided colon"), labels = c("Right-sided", "Left-sided"))
+circ_data$NumLiverMetsGroup <- factor(circ_data$NumLiverMetsGroup, levels = c("1", "≥2"))
+circ_data$SizeLiverMetsmmGroup <- factor(circ_data$SizeLiverMetsmmGroup, levels = c("<50", "≥50"))
+circ_data$ECOG <- factor(circ_data$ECOG, levels = c("0", "1"))
+circ_data$pT <- factor(circ_data$pT, levels = c("T1-T2", "T3-T4"))
+circ_data$pN <- factor(circ_data$pN, levels = c("N0", "N1-N2"))
+circ_data$ACT <- factor(circ_data$ACT, levels = c("FALSE", "TRUE"), labels = c("Observation", "Chemotherapy"))
+circ_data$Postop.Complication <- factor(circ_data$Postop.Complication, levels = c("No", "Yes"))
+circ_data$Oxaliplatin.History <- factor(circ_data$Oxaliplatin.History, levels = c("No", "Yes"))
+circ_data$Mets.Type <- factor(circ_data$Mets.Type, levels = c("Metachronous", "Synchronous"))
+circ_data$MSI <- factor(circ_data$MSI, levels = c("MSS", "MSI-High"), labels = c("MSS", "MSI-High"))
+circ_data$BRAF.V600E <- factor(circ_data$BRAF.V600E, levels = c("WT", "MUT"), labels = c("Wild-Type", "V600E"))
+circ_data$RAS <- factor(circ_data$RAS, levels = c("WT", "MUT"), labels = c("Wild-Type", "Mutant"))
+surv_object <- Surv(time = circ_data$DFS.MRD.months, event = circ_data$DFS.Event)
+cox_fit <- coxph(surv_object ~ CEA.Baseline + Age.Group + PrimSite + NumLiverMetsGroup + SizeLiverMetsmmGroup + pT + pN + RAS + Mets.Type + Postop.Complication + Oxaliplatin.History, data=circ_data) 
+ggforest(cox_fit, data = circ_data, main = "Multivariate Regression Model for DFS - ctDNA MRD Negative", refLabel = "Reference Group")
+test.ph <- cox.zph(cox_fit)
+```
+
+
+#DFS by ACT treatment in MRD negative
+```{r}
+rm(list=ls())
+setwd("~/Downloads")
+circ_data <- read.csv("Galaxy Liver Mets Data_20240626 Complete Dataset.csv")
+circ_data <- circ_data[circ_data$LiverMets=="TRUE",]
+circ_data <- circ_data[circ_data$ctDNA.MRD!="",]
+circ_data <- circ_data[circ_data$ctDNA.MRD=="NEGATIVE",]
+circ_data$DFS.months=circ_data$DFS.months-2
+circ_data <- circ_data[circ_data$DFS.months>=0,]
+circ_datadf <- as.data.frame(circ_data)
+
+survfit(Surv(time = circ_data$DFS.months, event = circ_data$DFS.Event)~ACT, data = circ_data)
+event_summary <- circ_data %>%
+  group_by(ACT) %>%
+  summarise(
+    Total = n(),
+    Events = sum(DFS.Event),
+    Fraction = Events / n(),
+    Percentage = (Events / n()) * 100
+  )
+print(event_summary)
+surv_object <-Surv(time = circ_data$DFS.months, event = circ_data$DFS.Event)
+KM_curve <- survfit(surv_object ~ ACT, data = circ_data,conf.int=0.95,conf.type="log-log") 
+ggsurvplot(KM_curve, data = circ_data, pval = FALSE, conf.int = FALSE, risk.table = TRUE, break.time.by=6, palette=c("red","blue"), title="DFS - ctDNA MRD Negative ACT vs Observation", ylab= "Disease-Free Survival", xlab="Time from Landmark Time point (Months)", legend.labs=c("Observation", "ACT"), legend.title="")
+summary(KM_curve, times= c(24))
+circ_data$ACT <- factor(circ_data$ACT, levels=c("TRUE","FALSE"))
+cox_fit <- coxph(surv_object ~ ACT, data=circ_data) 
+ggforest(cox_fit,data = circ_data)
+summary(cox_fit)
+cox_fit_summary <- summary(cox_fit)
+
+# Extract values for HR, 95% CI, and p-value
+HR <- cox_fit_summary$coefficients[2]
+lower_CI <- cox_fit_summary$conf.int[3]
+upper_CI <- cox_fit_summary$conf.int[4]
+p_value <- cox_fit_summary$coefficients[5]
+label_text <- paste0("HR = ", round(HR, 2), " (", round(lower_CI, 2), "-", round(upper_CI, 2), "); p = ", round(p_value, 3))
+print(label_text)
+
+#Fisher test for DFS percentages at 24
+dfs_times <- c(24)
+p_values <- sapply(dfs_times, function(time) {
+  neg_count <- sum(circ_data$ACT == "TRUE" & circ_data$DFS.months >= time & circ_data$DFS.Event == 0)
+  pos_count <- sum(circ_data$ACT == "FALSE" & circ_data$DFS.months >= time & circ_data$DFS.Event == 0)
+  neg_total <- sum(circ_data$ACT == "TRUE")
+  pos_total <- sum(circ_data$ACT == "FALSE")
+  
+  neg_surv <- neg_total - sum(circ_data$ACT == "TRUE" & circ_data$DFS.Event == 1 & circ_data$DFS.months < time)
+  pos_surv <- pos_total - sum(circ_data$ACT == "FALSE" & circ_data$DFS.Event == 1 & circ_data$DFS.months < time)
+  
+  surv_matrix <- matrix(c(neg_surv, pos_surv, neg_total - neg_surv, pos_total - pos_surv), nrow = 2)
+  test_result <- fisher.test(surv_matrix)
+  return(test_result$p.value)
+})
+names(p_values) <- paste0("p-value at ", dfs_times, " months")
+print(p_values)
+
+p_values_adjusted <- p.adjust(p_values, method = "bonferroni")
+names(p_values_adjusted) <- paste0("Corrected p-value at ", dfs_times, " months")
+print(p_values_adjusted)
+
+#Adjusted HR "ACT vs no ACT" - age, gender, ECOG and pathological stage - ACT as reference
+rm(list=ls())
+setwd("~/Downloads")
+circ_data <- read.csv("Galaxy Liver Mets Data_20240626 Complete Dataset.csv")
+circ_data <- circ_data[circ_data$LiverMets=="TRUE",]
+circ_data <- circ_data[circ_data$ctDNA.MRD!="",]
+circ_data <- circ_data[circ_data$ctDNA.MRD=="NEGATIVE",]
+circ_data$DFS.months=circ_data$DFS.months-2
+circ_data <- circ_data[circ_data$DFS.months>=0,]
+circ_datadf <- as.data.frame(circ_data)
+
+circ_data$Gender <- factor(circ_data$Gender, levels = c("Female", "Male"))
+circ_data$Age.Group <- factor(circ_data$Age.Group, levels = c("1", "2"), labels = c("<70", ">70"))
+circ_data$PrimSite <- factor(circ_data$PrimSite, levels = c("Right-sided colon", "Left-sided colon"))
+circ_data$NumLiverMetsGroup <- factor(circ_data$NumLiverMetsGroup, levels = c("1", "≥2"))
+circ_data$SizeLiverMetsmmGroup <- factor(circ_data$SizeLiverMetsmmGroup, levels = c("<50", "≥50"))
+circ_data$ECOG <- factor(circ_data$ECOG, levels = c("0", "1"))
+circ_data$pT <- factor(circ_data$pT, levels = c("T1-T2", "T3-T4"))
+circ_data$pN <- factor(circ_data$pN, levels = c("N0", "N1-N2"))
+circ_data$ACT <- factor(circ_data$ACT, levels = c("FALSE", "TRUE"))
+circ_data$Postop.Complication <- factor(circ_data$Postop.Complication, levels = c("No", "Yes"))
+circ_data$Oxaliplatin.History <- factor(circ_data$Oxaliplatin.History, levels = c("No", "Yes"))
+circ_data$Mets.Type <- factor(circ_data$Mets.Type, levels = c("Metachronous", "Synchronous"))
+circ_data$MSI <- factor(circ_data$MSI, levels = c("MSS", "MSI-High"), labels = c("MSS", "MSI-High"))
+circ_data$BRAF.V600E <- factor(circ_data$BRAF.V600E, levels = c("WT", "MUT"), labels = c("Wild-Type", "V600E"))
+circ_data$RAS <- factor(circ_data$RAS, levels = c("WT", "MUT"), labels = c("Wild-Type", "Mutant"))
+surv_object <- Surv(time = circ_data$DFS.MRD.months, event = circ_data$DFS.Event) 
+cox_fit <- coxph(surv_object ~ ACT + Gender + Age.Group + NumLiverMetsGroup + SizeLiverMetsmmGroup + RAS + Mets.Type + Oxaliplatin.History, data=circ_data) 
+summary(cox_fit)
+```
+
+
+#DFS by ACT treatment in MRD positive
+```{r}
+rm(list=ls())
+setwd("~/Downloads")
+circ_data <- read.csv("Galaxy Liver Mets Data_20240626 Complete Dataset.csv")
+circ_data <- circ_data[circ_data$LiverMets=="TRUE",]
+circ_data <- circ_data[circ_data$ctDNA.MRD!="",]
+circ_data <- circ_data[circ_data$ctDNA.MRD=="POSITIVE",]
+circ_data$DFS.months=circ_data$DFS.months-2
+circ_data <- circ_data[circ_data$DFS.months>=0,]
+circ_datadf <- as.data.frame(circ_data)
+
+survfit(Surv(time = circ_data$DFS.months, event = circ_data$DFS.Event)~ACT, data = circ_data)
+event_summary <- circ_data %>%
+  group_by(ACT) %>%
+  summarise(
+    Total = n(),
+    Events = sum(DFS.Event),
+    Fraction = Events / n(),
+    Percentage = (Events / n()) * 100
+  )
+print(event_summary)
+surv_object <-Surv(time = circ_data$DFS.months, event = circ_data$DFS.Event)
+KM_curve <- survfit(surv_object ~ ACT, data = circ_data,conf.int=0.95,conf.type="log-log") 
+ggsurvplot(KM_curve, data = circ_data, pval = FALSE, conf.int = FALSE, risk.table = TRUE, break.time.by=6, palette=c("red","blue"), title="DFS - ctDNA MRD Positive ACT vs Observation", ylab= "Disease-Free Survival", xlab="Time from Landmark Time point (Months)", legend.labs=c("Observation", "ACT"), legend.title="")
+summary(KM_curve, times= c(12, 24))
+circ_data$ACT <- factor(circ_data$ACT, levels=c("TRUE","FALSE"))
+cox_fit <- coxph(surv_object ~ ACT, data=circ_data) 
+ggforest(cox_fit,data = circ_data)
+summary(cox_fit)
+cox_fit_summary <- summary(cox_fit)
+
+# Extract values for HR, 95% CI, and p-value
+HR <- cox_fit_summary$coefficients[2]
+lower_CI <- cox_fit_summary$conf.int[3]
+upper_CI <- cox_fit_summary$conf.int[4]
+p_value <- cox_fit_summary$coefficients[5]
+label_text <- paste0("HR = ", round(HR, 2), " (", round(lower_CI, 2), "-", round(upper_CI, 2), "); p = ", round(p_value, 3))
+print(label_text)
+
+#Adjusted HR "ACT vs no ACT" - age, gender, ECOG and pathological stage - ACT as reference
+rm(list=ls())
+setwd("~/Downloads")
+circ_data <- read.csv("Galaxy Liver Mets Data_20240626 Complete Dataset.csv")
+circ_data <- circ_data[circ_data$LiverMets=="TRUE",]
+circ_data <- circ_data[circ_data$ctDNA.MRD!="",]
+circ_data <- circ_data[circ_data$ctDNA.MRD=="POSITIVE",]
+circ_data$DFS.months=circ_data$DFS.months-2
+circ_data <- circ_data[circ_data$DFS.months>=0,]
+circ_datadf <- as.data.frame(circ_data)
+
+circ_data$Gender <- factor(circ_data$Gender, levels = c("Female", "Male"))
+circ_data$Age.Group <- factor(circ_data$Age.Group, levels = c("1", "2"), labels = c("<70", ">70"))
+circ_data$PrimSite <- factor(circ_data$PrimSite, levels = c("Right-sided colon", "Left-sided colon"))
+circ_data$NumLiverMetsGroup <- factor(circ_data$NumLiverMetsGroup, levels = c("1", "≥2"))
+circ_data$SizeLiverMetsmmGroup <- factor(circ_data$SizeLiverMetsmmGroup, levels = c("<50", "≥50"))
+circ_data$ECOG <- factor(circ_data$ECOG, levels = c("0", "1"))
+circ_data$pT <- factor(circ_data$pT, levels = c("T1-T2", "T3-T4"))
+circ_data$pN <- factor(circ_data$pN, levels = c("N0", "N1-N2"))
+circ_data$ACT <- factor(circ_data$ACT, levels = c("FALSE", "TRUE"))
+circ_data$Postop.Complication <- factor(circ_data$Postop.Complication, levels = c("No", "Yes"))
+circ_data$Oxaliplatin.History <- factor(circ_data$Oxaliplatin.History, levels = c("No", "Yes"))
+circ_data$Mets.Type <- factor(circ_data$Mets.Type, levels = c("Metachronous", "Synchronous"))
+circ_data$MSI <- factor(circ_data$MSI, levels = c("MSS", "MSI-High"), labels = c("MSS", "MSI-High"))
+circ_data$BRAF.V600E <- factor(circ_data$BRAF.V600E, levels = c("WT", "MUT"), labels = c("Wild-Type", "V600E"))
+circ_data$RAS <- factor(circ_data$RAS, levels = c("WT", "MUT"), labels = c("Wild-Type", "Mutant"))
+surv_object <- Surv(time = circ_data$DFS.MRD.months, event = circ_data$DFS.Event) 
+cox_fit <- coxph(surv_object ~ ACT + Gender + Age.Group + NumLiverMetsGroup + SizeLiverMetsmmGroup + RAS + Mets.Type + Oxaliplatin.History, data=circ_data) 
+summary(cox_fit)
+```
+
+
+#DFS by ACT treatment in MRD negative - Synchronous metastatic site
+```{r}
+rm(list=ls())
+setwd("~/Downloads")
+circ_data <- read.csv("Galaxy Liver Mets Data_20240626 Complete Dataset.csv")
+circ_data <- circ_data[circ_data$LiverMets=="TRUE",]
+circ_data <- circ_data[circ_data$ctDNA.MRD!="",]
+circ_data <- circ_data[circ_data$ctDNA.MRD=="NEGATIVE",]
+circ_data <- circ_data[circ_data$Mets.Type=="Synchronous",]
+circ_data$DFS.months=circ_data$DFS.months-2
+circ_data <- circ_data[circ_data$DFS.months>=0,]
+circ_datadf <- as.data.frame(circ_data)
+
+survfit(Surv(time = circ_data$DFS.months, event = circ_data$DFS.Event)~ACT, data = circ_data)
+event_summary <- circ_data %>%
+  group_by(ACT) %>%
+  summarise(
+    Total = n(),
+    Events = sum(DFS.Event),
+    Fraction = Events / n(),
+    Percentage = (Events / n()) * 100
+  )
+print(event_summary)
+surv_object <-Surv(time = circ_data$DFS.months, event = circ_data$DFS.Event)
+KM_curve <- survfit(surv_object ~ ACT, data = circ_data,conf.int=0.95,conf.type="log-log") 
+ggsurvplot(KM_curve, data = circ_data, pval = FALSE, conf.int = FALSE, risk.table = TRUE, break.time.by=6, palette=c("red","blue"), title="DFS - ctDNA MRD Negative ACT vs Observation | Synchronous Met Site", ylab= "Disease-Free Survival", xlab="Time from Landmark Time point (Months)", legend.labs=c("Observation", "ACT"), legend.title="")
+summary(KM_curve, times= c(24))
+circ_data$ACT <- factor(circ_data$ACT, levels=c("TRUE","FALSE"))
+cox_fit <- coxph(surv_object ~ ACT, data=circ_data) 
+ggforest(cox_fit,data = circ_data)
+summary(cox_fit)
+cox_fit_summary <- summary(cox_fit)
+
+# Extract values for HR, 95% CI, and p-value
+HR <- cox_fit_summary$coefficients[2]
+lower_CI <- cox_fit_summary$conf.int[3]
+upper_CI <- cox_fit_summary$conf.int[4]
+p_value <- cox_fit_summary$coefficients[5]
+label_text <- paste0("HR = ", round(HR, 2), " (", round(lower_CI, 2), "-", round(upper_CI, 2), "); p = ", round(p_value, 3))
+print(label_text)
+
+#Fisher test for DFS percentages at 24
+dfs_times <- c(24)
+p_values <- sapply(dfs_times, function(time) {
+  neg_count <- sum(circ_data$ACT == "TRUE" & circ_data$DFS.months >= time & circ_data$DFS.Event == 0)
+  pos_count <- sum(circ_data$ACT == "FALSE" & circ_data$DFS.months >= time & circ_data$DFS.Event == 0)
+  neg_total <- sum(circ_data$ACT == "TRUE")
+  pos_total <- sum(circ_data$ACT == "FALSE")
+  
+  neg_surv <- neg_total - sum(circ_data$ACT == "TRUE" & circ_data$DFS.Event == 1 & circ_data$DFS.months < time)
+  pos_surv <- pos_total - sum(circ_data$ACT == "FALSE" & circ_data$DFS.Event == 1 & circ_data$DFS.months < time)
+  
+  surv_matrix <- matrix(c(neg_surv, pos_surv, neg_total - neg_surv, pos_total - pos_surv), nrow = 2)
+  test_result <- fisher.test(surv_matrix)
+  return(test_result$p.value)
+})
+names(p_values) <- paste0("p-value at ", dfs_times, " months")
+print(p_values)
+
+p_values_adjusted <- p.adjust(p_values, method = "bonferroni")
+names(p_values_adjusted) <- paste0("Corrected p-value at ", dfs_times, " months")
+print(p_values_adjusted)
+
+#Adjusted HR "ACT vs no ACT" - age, gender, ECOG and pathological stage - ACT as reference
+rm(list=ls())
+setwd("~/Downloads")
+circ_data <- read.csv("Galaxy Liver Mets Data_20240626 Complete Dataset.csv")
+circ_data <- circ_data[circ_data$LiverMets=="TRUE",]
+circ_data <- circ_data[circ_data$ctDNA.MRD!="",]
+circ_data <- circ_data[circ_data$ctDNA.MRD=="NEGATIVE",]
+circ_data <- circ_data[circ_data$Mets.Type=="Synchronous",]
+circ_data$DFS.months=circ_data$DFS.months-2
+circ_data <- circ_data[circ_data$DFS.months>=0,]
+circ_datadf <- as.data.frame(circ_data)
+
+circ_data$Gender <- factor(circ_data$Gender, levels = c("Female", "Male"))
+circ_data$Age.Group <- factor(circ_data$Age.Group, levels = c("1", "2"), labels = c("<70", ">70"))
+circ_data$PrimSite <- factor(circ_data$PrimSite, levels = c("Right-sided colon", "Left-sided colon"))
+circ_data$NumLiverMetsGroup <- factor(circ_data$NumLiverMetsGroup, levels = c("1", "≥2"))
+circ_data$SizeLiverMetsmmGroup <- factor(circ_data$SizeLiverMetsmmGroup, levels = c("<50", "≥50"))
+circ_data$ECOG <- factor(circ_data$ECOG, levels = c("0", "1"))
+circ_data$pT <- factor(circ_data$pT, levels = c("T1-T2", "T3-T4"))
+circ_data$pN <- factor(circ_data$pN, levels = c("N0", "N1-N2"))
+circ_data$ACT <- factor(circ_data$ACT, levels = c("FALSE", "TRUE"))
+circ_data$Postop.Complication <- factor(circ_data$Postop.Complication, levels = c("No", "Yes"))
+circ_data$Oxaliplatin.History <- factor(circ_data$Oxaliplatin.History, levels = c("No", "Yes"))
+circ_data$Mets.Type <- factor(circ_data$Mets.Type, levels = c("Metachronous", "Synchronous"))
+circ_data$MSI <- factor(circ_data$MSI, levels = c("MSS", "MSI-High"), labels = c("MSS", "MSI-High"))
+circ_data$BRAF.V600E <- factor(circ_data$BRAF.V600E, levels = c("WT", "MUT"), labels = c("Wild-Type", "V600E"))
+circ_data$RAS <- factor(circ_data$RAS, levels = c("WT", "MUT"), labels = c("Wild-Type", "Mutant"))
+surv_object <- Surv(time = circ_data$DFS.MRD.months, event = circ_data$DFS.Event) 
+cox_fit <- coxph(surv_object ~ ACT + Gender + Age.Group + NumLiverMetsGroup + SizeLiverMetsmmGroup + RAS + Oxaliplatin.History, data=circ_data) 
+summary(cox_fit)
+```
+
+
+#DFS by ACT treatment in MRD negative - Metachronous metastatic site
+```{r}
+rm(list=ls())
+setwd("~/Downloads")
+circ_data <- read.csv("Galaxy Liver Mets Data_20240626 Complete Dataset.csv")
+circ_data <- circ_data[circ_data$LiverMets=="TRUE",]
+circ_data <- circ_data[circ_data$ctDNA.MRD!="",]
+circ_data <- circ_data[circ_data$ctDNA.MRD=="NEGATIVE",]
+circ_data <- circ_data[circ_data$Mets.Type=="Metachronous",]
+circ_data$DFS.months=circ_data$DFS.months-2
+circ_data <- circ_data[circ_data$DFS.months>=0,]
+circ_datadf <- as.data.frame(circ_data)
+
+survfit(Surv(time = circ_data$DFS.months, event = circ_data$DFS.Event)~ACT, data = circ_data)
+event_summary <- circ_data %>%
+  group_by(ACT) %>%
+  summarise(
+    Total = n(),
+    Events = sum(DFS.Event),
+    Fraction = Events / n(),
+    Percentage = (Events / n()) * 100
+  )
+print(event_summary)
+surv_object <-Surv(time = circ_data$DFS.months, event = circ_data$DFS.Event)
+KM_curve <- survfit(surv_object ~ ACT, data = circ_data,conf.int=0.95,conf.type="log-log") 
+ggsurvplot(KM_curve, data = circ_data, pval = FALSE, conf.int = FALSE, risk.table = TRUE, break.time.by=6, palette=c("red","blue"), title="DFS - ctDNA MRD Negative ACT vs Observation | Metachronous Met Site", ylab= "Disease-Free Survival", xlab="Time from Landmark Time point (Months)", legend.labs=c("Observation", "ACT"), legend.title="")
+summary(KM_curve, times= c(24))
+circ_data$ACT <- factor(circ_data$ACT, levels=c("TRUE","FALSE"))
+cox_fit <- coxph(surv_object ~ ACT, data=circ_data) 
+ggforest(cox_fit,data = circ_data)
+summary(cox_fit)
+cox_fit_summary <- summary(cox_fit)
+
+# Extract values for HR, 95% CI, and p-value
+HR <- cox_fit_summary$coefficients[2]
+lower_CI <- cox_fit_summary$conf.int[3]
+upper_CI <- cox_fit_summary$conf.int[4]
+p_value <- cox_fit_summary$coefficients[5]
+label_text <- paste0("HR = ", round(HR, 2), " (", round(lower_CI, 2), "-", round(upper_CI, 2), "); p = ", round(p_value, 3))
+print(label_text)
+
+#Fisher test for DFS percentages at 24
+dfs_times <- c(24)
+p_values <- sapply(dfs_times, function(time) {
+  neg_count <- sum(circ_data$ACT == "TRUE" & circ_data$DFS.months >= time & circ_data$DFS.Event == 0)
+  pos_count <- sum(circ_data$ACT == "FALSE" & circ_data$DFS.months >= time & circ_data$DFS.Event == 0)
+  neg_total <- sum(circ_data$ACT == "TRUE")
+  pos_total <- sum(circ_data$ACT == "FALSE")
+  
+  neg_surv <- neg_total - sum(circ_data$ACT == "TRUE" & circ_data$DFS.Event == 1 & circ_data$DFS.months < time)
+  pos_surv <- pos_total - sum(circ_data$ACT == "FALSE" & circ_data$DFS.Event == 1 & circ_data$DFS.months < time)
+  
+  surv_matrix <- matrix(c(neg_surv, pos_surv, neg_total - neg_surv, pos_total - pos_surv), nrow = 2)
+  test_result <- fisher.test(surv_matrix)
+  return(test_result$p.value)
+})
+names(p_values) <- paste0("p-value at ", dfs_times, " months")
+print(p_values)
+
+p_values_adjusted <- p.adjust(p_values, method = "bonferroni")
+names(p_values_adjusted) <- paste0("Corrected p-value at ", dfs_times, " months")
+print(p_values_adjusted)
+
+#Adjusted HR "ACT vs no ACT" - age, gender, ECOG and pathological stage - ACT as reference
+rm(list=ls())
+setwd("~/Downloads")
+circ_data <- read.csv("Galaxy Liver Mets Data_20240626 Complete Dataset.csv")
+circ_data <- circ_data[circ_data$LiverMets=="TRUE",]
+circ_data <- circ_data[circ_data$ctDNA.MRD!="",]
+circ_data <- circ_data[circ_data$ctDNA.MRD=="NEGATIVE",]
+circ_data <- circ_data[circ_data$Mets.Type=="Metachronous",]
+circ_data$DFS.months=circ_data$DFS.months-2
+circ_data <- circ_data[circ_data$DFS.months>=0,]
+circ_datadf <- as.data.frame(circ_data)
+
+circ_data$Gender <- factor(circ_data$Gender, levels = c("Female", "Male"))
+circ_data$Age.Group <- factor(circ_data$Age.Group, levels = c("1", "2"), labels = c("<70", ">70"))
+circ_data$PrimSite <- factor(circ_data$PrimSite, levels = c("Right-sided colon", "Left-sided colon"))
+circ_data$NumLiverMetsGroup <- factor(circ_data$NumLiverMetsGroup, levels = c("1", "≥2"))
+circ_data$SizeLiverMetsmmGroup <- factor(circ_data$SizeLiverMetsmmGroup, levels = c("<50", "≥50"))
+circ_data$ECOG <- factor(circ_data$ECOG, levels = c("0", "1"))
+circ_data$pT <- factor(circ_data$pT, levels = c("T1-T2", "T3-T4"))
+circ_data$pN <- factor(circ_data$pN, levels = c("N0", "N1-N2"))
+circ_data$ACT <- factor(circ_data$ACT, levels = c("FALSE", "TRUE"))
+circ_data$Postop.Complication <- factor(circ_data$Postop.Complication, levels = c("No", "Yes"))
+circ_data$Oxaliplatin.History <- factor(circ_data$Oxaliplatin.History, levels = c("No", "Yes"))
+circ_data$Mets.Type <- factor(circ_data$Mets.Type, levels = c("Metachronous", "Synchronous"))
+circ_data$MSI <- factor(circ_data$MSI, levels = c("MSS", "MSI-High"), labels = c("MSS", "MSI-High"))
+circ_data$BRAF.V600E <- factor(circ_data$BRAF.V600E, levels = c("WT", "MUT"), labels = c("Wild-Type", "V600E"))
+circ_data$RAS <- factor(circ_data$RAS, levels = c("WT", "MUT"), labels = c("Wild-Type", "Mutant"))
+surv_object <- Surv(time = circ_data$DFS.MRD.months, event = circ_data$DFS.Event) 
+cox_fit <- coxph(surv_object ~ ACT + Gender + Age.Group + NumLiverMetsGroup + SizeLiverMetsmmGroup + RAS + Oxaliplatin.History, data=circ_data) 
+summary(cox_fit)
+```
+
+
+#DFS by ACT treatment in MRD negative - 1 Liver Met
+```{r}
+rm(list=ls())
+setwd("~/Downloads")
+circ_data <- read.csv("Galaxy Liver Mets Data_20240626 Complete Dataset.csv")
+circ_data <- circ_data[circ_data$LiverMets=="TRUE",]
+circ_data <- circ_data[circ_data$ctDNA.MRD!="",]
+circ_data <- circ_data[circ_data$ctDNA.MRD=="NEGATIVE",]
+circ_data <- circ_data[circ_data$NumLiverMetsGroup=="1",]
+circ_data$DFS.months=circ_data$DFS.months-2
+circ_data <- circ_data[circ_data$DFS.months>=0,]
+circ_datadf <- as.data.frame(circ_data)
+
+survfit(Surv(time = circ_data$DFS.months, event = circ_data$DFS.Event)~ACT, data = circ_data)
+event_summary <- circ_data %>%
+  group_by(ACT) %>%
+  summarise(
+    Total = n(),
+    Events = sum(DFS.Event),
+    Fraction = Events / n(),
+    Percentage = (Events / n()) * 100
+  )
+print(event_summary)
+surv_object <-Surv(time = circ_data$DFS.months, event = circ_data$DFS.Event)
+KM_curve <- survfit(surv_object ~ ACT, data = circ_data,conf.int=0.95,conf.type="log-log") 
+ggsurvplot(KM_curve, data = circ_data, pval = FALSE, conf.int = FALSE, risk.table = TRUE, break.time.by=6, palette=c("red","blue"), title="DFS - ctDNA MRD Negative ACT vs Observation | 1 Liver Met", ylab= "Disease-Free Survival", xlab="Time from Landmark Time point (Months)", legend.labs=c("Observation", "ACT"), legend.title="")
+summary(KM_curve, times= c(24))
+circ_data$ACT <- factor(circ_data$ACT, levels=c("TRUE","FALSE"))
+cox_fit <- coxph(surv_object ~ ACT, data=circ_data) 
+ggforest(cox_fit,data = circ_data)
+summary(cox_fit)
+cox_fit_summary <- summary(cox_fit)
+
+# Extract values for HR, 95% CI, and p-value
+HR <- cox_fit_summary$coefficients[2]
+lower_CI <- cox_fit_summary$conf.int[3]
+upper_CI <- cox_fit_summary$conf.int[4]
+p_value <- cox_fit_summary$coefficients[5]
+label_text <- paste0("HR = ", round(HR, 2), " (", round(lower_CI, 2), "-", round(upper_CI, 2), "); p = ", round(p_value, 3))
+print(label_text)
+
+#Fisher test for DFS percentages at 24
+dfs_times <- c(24)
+p_values <- sapply(dfs_times, function(time) {
+  neg_count <- sum(circ_data$ACT == "TRUE" & circ_data$DFS.months >= time & circ_data$DFS.Event == 0)
+  pos_count <- sum(circ_data$ACT == "FALSE" & circ_data$DFS.months >= time & circ_data$DFS.Event == 0)
+  neg_total <- sum(circ_data$ACT == "TRUE")
+  pos_total <- sum(circ_data$ACT == "FALSE")
+  
+  neg_surv <- neg_total - sum(circ_data$ACT == "TRUE" & circ_data$DFS.Event == 1 & circ_data$DFS.months < time)
+  pos_surv <- pos_total - sum(circ_data$ACT == "FALSE" & circ_data$DFS.Event == 1 & circ_data$DFS.months < time)
+  
+  surv_matrix <- matrix(c(neg_surv, pos_surv, neg_total - neg_surv, pos_total - pos_surv), nrow = 2)
+  test_result <- fisher.test(surv_matrix)
+  return(test_result$p.value)
+})
+names(p_values) <- paste0("p-value at ", dfs_times, " months")
+print(p_values)
+
+p_values_adjusted <- p.adjust(p_values, method = "bonferroni")
+names(p_values_adjusted) <- paste0("Corrected p-value at ", dfs_times, " months")
+print(p_values_adjusted)
+
+#Adjusted HR "ACT vs no ACT" - age, gender, ECOG and pathological stage - ACT as reference
+rm(list=ls())
+setwd("~/Downloads")
+circ_data <- read.csv("Galaxy Liver Mets Data_20240626 Complete Dataset.csv")
+circ_data <- circ_data[circ_data$LiverMets=="TRUE",]
+circ_data <- circ_data[circ_data$ctDNA.MRD!="",]
+circ_data <- circ_data[circ_data$ctDNA.MRD=="NEGATIVE",]
+circ_data <- circ_data[circ_data$NumLiverMetsGroup=="1",]
+circ_data$DFS.months=circ_data$DFS.months-2
+circ_data <- circ_data[circ_data$DFS.months>=0,]
+circ_datadf <- as.data.frame(circ_data)
+
+circ_data$Gender <- factor(circ_data$Gender, levels = c("Female", "Male"))
+circ_data$Age.Group <- factor(circ_data$Age.Group, levels = c("1", "2"), labels = c("<70", ">70"))
+circ_data$PrimSite <- factor(circ_data$PrimSite, levels = c("Right-sided colon", "Left-sided colon"))
+circ_data$NumLiverMetsGroup <- factor(circ_data$NumLiverMetsGroup, levels = c("1", "≥2"))
+circ_data$SizeLiverMetsmmGroup <- factor(circ_data$SizeLiverMetsmmGroup, levels = c("<50", "≥50"))
+circ_data$ECOG <- factor(circ_data$ECOG, levels = c("0", "1"))
+circ_data$pT <- factor(circ_data$pT, levels = c("T1-T2", "T3-T4"))
+circ_data$pN <- factor(circ_data$pN, levels = c("N0", "N1-N2"))
+circ_data$ACT <- factor(circ_data$ACT, levels = c("FALSE", "TRUE"))
+circ_data$Postop.Complication <- factor(circ_data$Postop.Complication, levels = c("No", "Yes"))
+circ_data$Oxaliplatin.History <- factor(circ_data$Oxaliplatin.History, levels = c("No", "Yes"))
+circ_data$Mets.Type <- factor(circ_data$Mets.Type, levels = c("Metachronous", "Synchronous"))
+circ_data$MSI <- factor(circ_data$MSI, levels = c("MSS", "MSI-High"), labels = c("MSS", "MSI-High"))
+circ_data$BRAF.V600E <- factor(circ_data$BRAF.V600E, levels = c("WT", "MUT"), labels = c("Wild-Type", "V600E"))
+circ_data$RAS <- factor(circ_data$RAS, levels = c("WT", "MUT"), labels = c("Wild-Type", "Mutant"))
+surv_object <- Surv(time = circ_data$DFS.MRD.months, event = circ_data$DFS.Event) 
+cox_fit <- coxph(surv_object ~ ACT + Gender + Age.Group + Mets.Type + SizeLiverMetsmmGroup + RAS + Oxaliplatin.History, data=circ_data) 
+summary(cox_fit)
+```
+
+
+#DFS by ACT treatment in MRD negative - 2≥ Liver Mets
+```{r}
+rm(list=ls())
+setwd("~/Downloads")
+circ_data <- read.csv("Galaxy Liver Mets Data_20240626 Complete Dataset.csv")
+circ_data <- circ_data[circ_data$LiverMets=="TRUE",]
+circ_data <- circ_data[circ_data$ctDNA.MRD!="",]
+circ_data <- circ_data[circ_data$ctDNA.MRD=="NEGATIVE",]
+circ_data <- circ_data[circ_data$NumLiverMetsGroup=="≥2",]
+circ_data$DFS.months=circ_data$DFS.months-2
+circ_data <- circ_data[circ_data$DFS.months>=0,]
+circ_datadf <- as.data.frame(circ_data)
+
+survfit(Surv(time = circ_data$DFS.months, event = circ_data$DFS.Event)~ACT, data = circ_data)
+event_summary <- circ_data %>%
+  group_by(ACT) %>%
+  summarise(
+    Total = n(),
+    Events = sum(DFS.Event),
+    Fraction = Events / n(),
+    Percentage = (Events / n()) * 100
+  )
+print(event_summary)
+surv_object <-Surv(time = circ_data$DFS.months, event = circ_data$DFS.Event)
+KM_curve <- survfit(surv_object ~ ACT, data = circ_data,conf.int=0.95,conf.type="log-log") 
+ggsurvplot(KM_curve, data = circ_data, pval = FALSE, conf.int = FALSE, risk.table = TRUE, break.time.by=6, palette=c("red","blue"), title="DFS - ctDNA MRD Negative ACT vs Observation | ≥2 Liver Met", ylab= "Disease-Free Survival", xlab="Time from Landmark Time point (Months)", legend.labs=c("Observation", "ACT"), legend.title="")
+summary(KM_curve, times= c(24))
+circ_data$ACT <- factor(circ_data$ACT, levels=c("TRUE","FALSE"))
+cox_fit <- coxph(surv_object ~ ACT, data=circ_data) 
+ggforest(cox_fit,data = circ_data)
+summary(cox_fit)
+cox_fit_summary <- summary(cox_fit)
+
+# Extract values for HR, 95% CI, and p-value
+HR <- cox_fit_summary$coefficients[2]
+lower_CI <- cox_fit_summary$conf.int[3]
+upper_CI <- cox_fit_summary$conf.int[4]
+p_value <- cox_fit_summary$coefficients[5]
+label_text <- paste0("HR = ", round(HR, 2), " (", round(lower_CI, 2), "-", round(upper_CI, 2), "); p = ", round(p_value, 3))
+print(label_text)
+
+#Fisher test for DFS percentages at 24
+dfs_times <- c(24)
+p_values <- sapply(dfs_times, function(time) {
+  neg_count <- sum(circ_data$ACT == "TRUE" & circ_data$DFS.months >= time & circ_data$DFS.Event == 0)
+  pos_count <- sum(circ_data$ACT == "FALSE" & circ_data$DFS.months >= time & circ_data$DFS.Event == 0)
+  neg_total <- sum(circ_data$ACT == "TRUE")
+  pos_total <- sum(circ_data$ACT == "FALSE")
+  
+  neg_surv <- neg_total - sum(circ_data$ACT == "TRUE" & circ_data$DFS.Event == 1 & circ_data$DFS.months < time)
+  pos_surv <- pos_total - sum(circ_data$ACT == "FALSE" & circ_data$DFS.Event == 1 & circ_data$DFS.months < time)
+  
+  surv_matrix <- matrix(c(neg_surv, pos_surv, neg_total - neg_surv, pos_total - pos_surv), nrow = 2)
+  test_result <- fisher.test(surv_matrix)
+  return(test_result$p.value)
+})
+names(p_values) <- paste0("p-value at ", dfs_times, " months")
+print(p_values)
+
+p_values_adjusted <- p.adjust(p_values, method = "bonferroni")
+names(p_values_adjusted) <- paste0("Corrected p-value at ", dfs_times, " months")
+print(p_values_adjusted)
+
+#Adjusted HR "ACT vs no ACT" - age, gender, ECOG and pathological stage - ACT as reference
+rm(list=ls())
+setwd("~/Downloads")
+circ_data <- read.csv("Galaxy Liver Mets Data_20240626 Complete Dataset.csv")
+circ_data <- circ_data[circ_data$LiverMets=="TRUE",]
+circ_data <- circ_data[circ_data$ctDNA.MRD!="",]
+circ_data <- circ_data[circ_data$ctDNA.MRD=="NEGATIVE",]
+circ_data <- circ_data[circ_data$NumLiverMetsGroup=="≥2",]
+circ_data$DFS.months=circ_data$DFS.months-2
+circ_data <- circ_data[circ_data$DFS.months>=0,]
+circ_datadf <- as.data.frame(circ_data)
+
+circ_data$Gender <- factor(circ_data$Gender, levels = c("Female", "Male"))
+circ_data$Age.Group <- factor(circ_data$Age.Group, levels = c("1", "2"), labels = c("<70", ">70"))
+circ_data$PrimSite <- factor(circ_data$PrimSite, levels = c("Right-sided colon", "Left-sided colon"))
+circ_data$NumLiverMetsGroup <- factor(circ_data$NumLiverMetsGroup, levels = c("1", "≥2"))
+circ_data$SizeLiverMetsmmGroup <- factor(circ_data$SizeLiverMetsmmGroup, levels = c("<50", "≥50"))
+circ_data$ECOG <- factor(circ_data$ECOG, levels = c("0", "1"))
+circ_data$pT <- factor(circ_data$pT, levels = c("T1-T2", "T3-T4"))
+circ_data$pN <- factor(circ_data$pN, levels = c("N0", "N1-N2"))
+circ_data$ACT <- factor(circ_data$ACT, levels = c("FALSE", "TRUE"))
+circ_data$Postop.Complication <- factor(circ_data$Postop.Complication, levels = c("No", "Yes"))
+circ_data$Oxaliplatin.History <- factor(circ_data$Oxaliplatin.History, levels = c("No", "Yes"))
+circ_data$Mets.Type <- factor(circ_data$Mets.Type, levels = c("Metachronous", "Synchronous"))
+circ_data$MSI <- factor(circ_data$MSI, levels = c("MSS", "MSI-High"), labels = c("MSS", "MSI-High"))
+circ_data$BRAF.V600E <- factor(circ_data$BRAF.V600E, levels = c("WT", "MUT"), labels = c("Wild-Type", "V600E"))
+circ_data$RAS <- factor(circ_data$RAS, levels = c("WT", "MUT"), labels = c("Wild-Type", "Mutant"))
+surv_object <- Surv(time = circ_data$DFS.MRD.months, event = circ_data$DFS.Event) 
+cox_fit <- coxph(surv_object ~ ACT + Gender + Age.Group + Mets.Type + RAS + Oxaliplatin.History, data=circ_data) 
+summary(cox_fit)
+```
+
+
+#DFS by ctDNA Clearance ACT-treated at 3 months
+```{r}
+rm(list=ls())
+setwd("~/Downloads")
+circ_data <- read.csv("Galaxy Liver Mets Data_20240626 Complete Dataset.csv")
+circ_data <- circ_data[circ_data$LiverMets=="TRUE",]
+circ_data <- circ_data[circ_data$ctDNA.MRD!="",]
+circ_data <- circ_data[circ_data$ACT==TRUE,]
+circ_datadf <- as.data.frame(circ_data)
+
+circ_data$ctDNA.Dynamics <- NA #first we create the variable for the ctDNA & NAC combination, and we assign values
+circ_data <- circ_data %>%
+  mutate(ctDNA.Dynamics = case_when(
+    ctDNA.MRD == "POSITIVE" & ctDNA.3months == "NEGATIVE" ~ 1,
+    ctDNA.MRD == "POSITIVE" & ctDNA.3months == "POSITIVE" ~ 2
+  ))
+
+circ_data <- circ_data[circ_data$DFS.3mo.months>=0,]
+survfit(Surv(time = circ_data$DFS.3mo.months, event = circ_data$DFS.Event)~ctDNA.Dynamics, data = circ_data)
+event_summary <- circ_data %>%
+  group_by(ctDNA.Dynamics) %>%
+  summarise(
+    Total = n(),
+    Events = sum(DFS.Event),
+    Fraction = Events / n(),
+    Percentage = (Events / n()) * 100
+  )
+print(event_summary)
+surv_object <-Surv(time = circ_data$DFS.3mo.months, event = circ_data$DFS.Event)
+KM_curve <- survfit(surv_object ~ ctDNA.Dynamics, data = circ_data,conf.int=0.95,conf.type="log-log") 
+ggsurvplot(KM_curve, data = circ_data, pval = FALSE, conf.int = FALSE, risk.table = TRUE, break.time.by=6, palette=c("blue","red"), title="DFS - ctDNA Clearance from MRD to 3 months ACT-treated", ylab= "Disease-Free Survival", xlab="Time from Landmark Time point (Months)", legend.labs=c("Clearance", "No Clearance"), legend.title="")
+summary(KM_curve, times= c(6, 12, 24))
+circ_data$ctDNA.Dynamics <- factor(circ_data$ctDNA.Dynamics, levels=c("1","2"), labels = c("Clearance", "No Clearance"))
+cox_fit <- coxph(surv_object ~ ctDNA.Dynamics, data=circ_data) 
+ggforest(cox_fit,data = circ_data) 
+summary(cox_fit)
+cox_fit_summary <- summary(cox_fit)
+
+# Extract values for HR, 95% CI, and p-value
+HR <- cox_fit_summary$coefficients[2]
+lower_CI <- cox_fit_summary$conf.int[3]
+upper_CI <- cox_fit_summary$conf.int[4]
+p_value <- cox_fit_summary$coefficients[5]
+label_text <- paste0("HR = ", round(HR, 2), " (", round(lower_CI, 2), "-", round(upper_CI, 2), "); p = ", round(p_value, 3))
+print(label_text)
+```
+
+
+#Levels of MRD MTM/mL in Clearance at 3 months log10 transformation
+```{r}
+rm(list=ls())
+setwd("~/Downloads")
+circ_data <- read.csv("Galaxy Liver Mets Data_20240626 Complete Dataset.csv")
+circ_data <- circ_data[circ_data$LiverMets=="TRUE",]
+circ_data <- circ_data[circ_data$ctDNA.MRD!="",]
+circ_data <- circ_data[circ_data$ACT==TRUE,]
+circ_datadf <- as.data.frame(circ_data)
+
+circ_data$ctDNA.Clearance <- NA #first we create the variable for the ctDNA & NAC combination, and we assign values
+circ_data <- circ_data %>%
+  mutate(ctDNA.Clearance = case_when(
+    ctDNA.MRD == "POSITIVE" & ctDNA.3months == "NEGATIVE" ~ 1,
+    ctDNA.MRD == "POSITIVE" & ctDNA.3months == "POSITIVE" ~ 2
+  ))
+
+circ_data <- circ_data[circ_data$DFS.3mo.months>=0,]
+circ_data <- subset(circ_data, !is.na(ctDNA.Clearance))
+
+# Transform p_MRD_MTM with log10
+circ_data$p_MRD_MTM <- as.numeric(as.character(circ_data$p_MRD_MTM))
+circ_data$ctDNA.Clearance <- factor(circ_data$ctDNA.Clearance, levels=c("1","2"), labels = c("Clearance", "No Clearance"))
+median_p_MRD_MTM <- aggregate(p_MRD_MTM ~ ctDNA.Clearance, data = circ_data, FUN = median)
+print(median_p_MRD_MTM)
+
+# Create violin plot with log10 scale on y-axis
+ggplot(circ_data, aes(x=ctDNA.Clearance, y=p_MRD_MTM, fill=ctDNA.Clearance)) +
+  geom_violin(trim=FALSE) +
+  scale_fill_manual(values=c("Clearance"="lightblue", "No Clearance"="salmon")) +
+  geom_boxplot(width=0.1, fill="white", colour="black", alpha=0.5) +
+  scale_y_log10(breaks=c(0.001, 0.01, 0.1, 1, 10, 100, 1000, 10000)) +
+  labs(title="MRD MTM/mL | Clearance at 3 months", x="Clearance at 3 months", y="MRD MTM/mL") +
+  theme_minimal() +
+  theme(legend.position="none")
+m3_1v2 <- wilcox.test(p_MRD_MTM ~ ctDNA.Clearance,
+                      data = circ_data[circ_data$ctDNA.Clearance %in% c("Clearance", "No Clearance"), ],
+                      na.rm = TRUE)
+print(m3_1v2)
+```
+
+#DFS by ctDNA Clearance ACT-treated at 6 months
+```{r}
+rm(list=ls())
+setwd("~/Downloads")
+circ_data <- read.csv("Galaxy Liver Mets Data_20240626 Complete Dataset.csv")
+circ_data <- circ_data[circ_data$LiverMets=="TRUE",]
+circ_data <- circ_data[circ_data$ctDNA.MRD!="",]
+circ_data <- circ_data[circ_data$ACT==TRUE,]
+circ_datadf <- as.data.frame(circ_data)
+
+circ_data$ctDNA.Dynamics <- NA #first we create the variable for the ctDNA & NAC combination, and we assign values
+circ_data <- circ_data %>%
+  mutate(ctDNA.Dynamics = case_when(
+    ctDNA.MRD == "POSITIVE" & ctDNA.6months == "NEGATIVE" ~ 1,
+    ctDNA.MRD == "POSITIVE" & ctDNA.6months == "POSITIVE" ~ 2
+  ))
+
+circ_data <- circ_data[circ_data$DFS.6mo.months>=0,]
+survfit(Surv(time = circ_data$DFS.6mo.months, event = circ_data$DFS.Event)~ctDNA.Dynamics, data = circ_data)
+event_summary <- circ_data %>%
+  group_by(ctDNA.Dynamics) %>%
+  summarise(
+    Total = n(),
+    Events = sum(DFS.Event),
+    Fraction = Events / n(),
+    Percentage = (Events / n()) * 100
+  )
+print(event_summary)
+surv_object <-Surv(time = circ_data$DFS.6mo.months, event = circ_data$DFS.Event)
+KM_curve <- survfit(surv_object ~ ctDNA.Dynamics, data = circ_data,conf.int=0.95,conf.type="log-log") 
+ggsurvplot(KM_curve, data = circ_data, pval = FALSE, conf.int = FALSE, risk.table = TRUE, break.time.by=6, palette=c("blue","red"), title="DFS - ctDNA Clearance from MRD to 6 months ACT-treated", ylab= "Disease-Free Survival", xlab="Time from Landmark Time point (Months)", legend.labs=c("Clearance", "No Clearance"), legend.title="")
+summary(KM_curve, times= c(6, 24))
+circ_data$ctDNA.Dynamics <- factor(circ_data$ctDNA.Dynamics, levels=c("1","2"), labels = c("Clearance", "No Clearance"))
+cox_fit <- coxph(surv_object ~ ctDNA.Dynamics, data=circ_data) 
+ggforest(cox_fit,data = circ_data) 
+summary(cox_fit)
+cox_fit_summary <- summary(cox_fit)
+
+# Extract values for HR, 95% CI, and p-value
+HR <- cox_fit_summary$coefficients[2]
+lower_CI <- cox_fit_summary$conf.int[3]
+upper_CI <- cox_fit_summary$conf.int[4]
+p_value <- cox_fit_summary$coefficients[5]
+label_text <- paste0("HR = ", round(HR, 2), " (", round(lower_CI, 2), "-", round(upper_CI, 2), "); p = ", round(p_value, 3))
+print(label_text)
+```
+
+
+#Levels of MRD MTM/mL in Clearance at 6 months log10 transformation
+```{r}
+rm(list=ls())
+setwd("~/Downloads")
+circ_data <- read.csv("Galaxy Liver Mets Data_20240626 Complete Dataset.csv")
+circ_data <- circ_data[circ_data$LiverMets=="TRUE",]
+circ_data <- circ_data[circ_data$ctDNA.MRD!="",]
+circ_data <- circ_data[circ_data$ACT==TRUE,]
+circ_datadf <- as.data.frame(circ_data)
+
+circ_data$ctDNA.Clearance <- NA #first we create the variable for the ctDNA & NAC combination, and we assign values
+circ_data <- circ_data %>%
+  mutate(ctDNA.Clearance = case_when(
+    ctDNA.MRD == "POSITIVE" & ctDNA.6months == "NEGATIVE" ~ 1,
+    ctDNA.MRD == "POSITIVE" & ctDNA.6months == "POSITIVE" ~ 2
+  ))
+
+circ_data <- circ_data[circ_data$DFS.6mo.months>=0,]
+circ_data <- subset(circ_data, !is.na(ctDNA.Clearance))
+
+# Transform p_MRD_MTM with log10
+circ_data$p_MRD_MTM <- as.numeric(as.character(circ_data$p_MRD_MTM))
+circ_data$ctDNA.Clearance <- factor(circ_data$ctDNA.Clearance, levels=c("1","2"), labels = c("Clearance", "No Clearance"))
+median_p_MRD_MTM <- aggregate(p_MRD_MTM ~ ctDNA.Clearance, data = circ_data, FUN = median)
+print(median_p_MRD_MTM)
+
+# Create violin plot with log10 scale on y-axis
+ggplot(circ_data, aes(x=ctDNA.Clearance, y=p_MRD_MTM, fill=ctDNA.Clearance)) +
+  geom_violin(trim=FALSE) +
+  scale_fill_manual(values=c("Clearance"="lightblue", "No Clearance"="salmon")) +
+  geom_boxplot(width=0.1, fill="white", colour="black", alpha=0.5) +
+  scale_y_log10(breaks=c(0.001, 0.01, 0.1, 1, 10, 100, 1000, 10000)) +
+  labs(title="MRD MTM/mL | Clearance at 6 months", x="Clearance at 6 months", y="MRD MTM/mL") +
+  theme_minimal() +
+  theme(legend.position="none")
+m3_1v2 <- wilcox.test(p_MRD_MTM ~ ctDNA.Clearance,
+                      data = circ_data[circ_data$ctDNA.Clearance %in% c("Clearance", "No Clearance"), ],
+                      na.rm = TRUE)
+print(m3_1v2)
+```
+
+#DFS by ctDNA at the Surveillance Window - Landmark 10 weeks
+```{r}
+rm(list=ls())
+setwd("~/Downloads")
+circ_data <- read.csv("Galaxy Liver Mets Data_20240626 Complete Dataset.csv")
+circ_data <- circ_data[circ_data$LiverMets=="TRUE",]
+circ_data <- circ_data[circ_data$ctDNA.Surveillance!="",]
+circ_data$DFS.months=circ_data$DFS.months-2.5
+circ_data <- circ_data[circ_data$DFS.months>=0,]
+circ_datadf <- as.data.frame(circ_data)
+
+survfit(Surv(time = circ_data$DFS.months, event = circ_data$DFS.Event)~ctDNA.Surveillance, data = circ_data)
+event_summary <- circ_data %>%
+  group_by(ctDNA.Surveillance) %>%
+  summarise(
+    Total = n(),
+    Events = sum(DFS.Event),
+    Fraction = Events / n(),
+    Percentage = (Events / n()) * 100
+  )
+print(event_summary)
+surv_object <-Surv(time = circ_data$DFS.months, event = circ_data$DFS.Event)
+KM_curve <- survfit(surv_object ~ ctDNA.Surveillance, data = circ_data,conf.int=0.95,conf.type="log-log") 
+ggsurvplot(KM_curve, data = circ_data, pval = FALSE, conf.int = FALSE, risk.table = TRUE, break.time.by=6, palette=c("blue","red"), title="DFS - ctDNA Surveillance window", ylab= "Disease-Free Survival", xlab="Time from Landmark Time point (Months)", legend.labs=c("ctDNA Negative", "ctDNA Positive"), legend.title="")
+summary(KM_curve, times= c(24, 30, 36))
+circ_data$ctDNA.Surveillance <- factor(circ_data$ctDNA.Surveillance, levels=c("NEGATIVE","POSITIVE"))
+cox_fit <- coxph(surv_object ~ ctDNA.Surveillance, data=circ_data) 
+ggforest(cox_fit,data = circ_data)
+summary(cox_fit)
+cox_fit_summary <- summary(cox_fit)
+
+# Extract values for HR, 95% CI, and p-value
+HR <- cox_fit_summary$coefficients[2]
+lower_CI <- cox_fit_summary$conf.int[3]
+upper_CI <- cox_fit_summary$conf.int[4]
+p_value <- cox_fit_summary$coefficients[5]
+label_text <- paste0("HR = ", round(HR, 2), " (", round(lower_CI, 2), "-", round(upper_CI, 2), "); p = ", round(p_value, 3))
+print(label_text)
+
+#Fisher test for DFS percentages at 24, 30, and 36 months
+dfs_times <- c(24, 30, 36)
+p_values <- sapply(dfs_times, function(time) {
+  neg_count <- sum(circ_data$ctDNA.Surveillance == "NEGATIVE" & circ_data$DFS.months >= time & circ_data$DFS.Event == 0)
+  pos_count <- sum(circ_data$ctDNA.Surveillance == "POSITIVE" & circ_data$DFS.months >= time & circ_data$DFS.Event == 0)
+  neg_total <- sum(circ_data$ctDNA.Surveillance == "NEGATIVE")
+  pos_total <- sum(circ_data$ctDNA.Surveillance == "POSITIVE")
+  
+  neg_surv <- neg_total - sum(circ_data$ctDNA.Surveillance == "NEGATIVE" & circ_data$DFS.Event == 1 & circ_data$DFS.months < time)
+  pos_surv <- pos_total - sum(circ_data$ctDNA.Surveillance == "POSITIVE" & circ_data$DFS.Event == 1 & circ_data$DFS.months < time)
+  
+  surv_matrix <- matrix(c(neg_surv, pos_surv, neg_total - neg_surv, pos_total - pos_surv), nrow = 2)
+  test_result <- fisher.test(surv_matrix)
+  return(test_result$p.value)
+})
+names(p_values) <- paste0("p-value at ", dfs_times, " months")
+print(p_values)
+
+p_values_adjusted <- p.adjust(p_values, method = "bonferroni")
+names(p_values_adjusted) <- paste0("Corrected p-value at ", dfs_times, " months")
+print(p_values_adjusted)
+```
+
+
+
+
+#OS by ctDNA at the Surveillance Window - Landmark 10 weeks
+```{r}
+rm(list=ls())
+setwd("~/Downloads")
+circ_data <- read.csv("Galaxy Liver Mets Data_20240626 Complete Dataset.csv")
+circ_data <- circ_data[circ_data$LiverMets=="TRUE",]
+circ_data <- circ_data[circ_data$ctDNA.Surveillance!="",]
+circ_data$OS.months=circ_data$OS.months-2.5
+circ_data <- circ_data[circ_data$OS.months>=0,]
+circ_datadf <- as.data.frame(circ_data)
+
+survfit(Surv(time = circ_data$OS.months, event = circ_data$OS.Event)~ctDNA.Surveillance, data = circ_data)
+event_summary <- circ_data %>%
+  group_by(ctDNA.Surveillance) %>%
+  summarise(
+    Total = n(),
+    Events = sum(OS.Event),
+    Fraction = Events / n(),
+    Percentage = (Events / n()) * 100
+  )
+print(event_summary)
+surv_object <-Surv(time = circ_data$OS.months, event = circ_data$OS.Event)
+KM_curve <- survfit(surv_object ~ ctDNA.Surveillance, data = circ_data,conf.int=0.95,conf.type="log-log") 
+ggsurvplot(KM_curve, data = circ_data, pval = FALSE, conf.int = FALSE, risk.table = TRUE, break.time.by=6, palette=c("blue","red"), title="OS - ctDNA Surveillance window", ylab= "Overall Survival", xlab="Time from Landmark Time point (Months)", legend.labs=c("ctDNA Negative", "ctDNA Positive"), legend.title="")
+summary(KM_curve, times= c(24, 30, 36))
+circ_data$ctDNA.Surveillance <- factor(circ_data$ctDNA.Surveillance, levels=c("NEGATIVE","POSITIVE"))
+cox_fit <- coxph(surv_object ~ ctDNA.Surveillance, data=circ_data) 
+ggforest(cox_fit,data = circ_data)
+summary(cox_fit)
+cox_fit_summary <- summary(cox_fit)
+
+# Extract values for HR, 95% CI, and p-value
+HR <- cox_fit_summary$coefficients[2]
+lower_CI <- cox_fit_summary$conf.int[3]
+upper_CI <- cox_fit_summary$conf.int[4]
+p_value <- cox_fit_summary$coefficients[5]
+label_text <- paste0("HR = ", round(HR, 2), " (", round(lower_CI, 2), "-", round(upper_CI, 2), "); p = ", round(p_value, 3))
+print(label_text)
+
+#Fisher test for OS percentages at 24, 30, and 36 months
+os_times <- c(24, 30, 36)
+p_values <- sapply(os_times, function(time) {
+  neg_count <- sum(circ_data$ctDNA.MRD == "NEGATIVE" & circ_data$OS.months >= time & circ_data$OS.Event == 0)
+  pos_count <- sum(circ_data$ctDNA.MRD == "POSITIVE" & circ_data$OS.months >= time & circ_data$OS.Event == 0)
+  neg_total <- sum(circ_data$ctDNA.MRD == "NEGATIVE")
+  pos_total <- sum(circ_data$ctDNA.MRD == "POSITIVE")
+  
+  neg_surv <- neg_total - sum(circ_data$ctDNA.MRD == "NEGATIVE" & circ_data$OS.Event == 1 & circ_data$OS.months < time)
+  pos_surv <- pos_total - sum(circ_data$ctDNA.MRD == "POSITIVE" & circ_data$OS.Event == 1 & circ_data$OS.months < time)
+  
+  surv_matrix <- matrix(c(neg_surv, pos_surv, neg_total - neg_surv, pos_total - pos_surv), nrow = 2)
+  test_result <- fisher.test(surv_matrix)
+  return(test_result$p.value)
+})
+names(p_values) <- paste0("p-value at ", os_times, " months")
+print(p_values)
+
+p_values_adjusted <- p.adjust(p_values, method = "bonferroni")
+names(p_values_adjusted) <- paste0("Corrected p-value at ", os_times, " months")
+print(p_values_adjusted)
+```
+
+
+
+
+#Multivariate cox regression at Surveillance Window for DFS - Landmark 10 weeks
+```{r}
+rm(list=ls())
+setwd("~/Downloads")
+circ_data <- read.csv("Galaxy Liver Mets Data_20240626 Complete Dataset.csv")
+circ_data <- circ_data[circ_data$LiverMets=="TRUE",]
+circ_data <- circ_data[circ_data$ctDNA.Surveillance!="",]
+circ_data$DFS.months=circ_data$DFS.months-2.5
+circ_data <- circ_data[circ_data$DFS.months>=0,]
+circ_datadf <- as.data.frame(circ_data)
+
+circ_data$ctDNA.Surveillance <- factor(circ_data$ctDNA.Surveillance, levels=c("NEGATIVE","POSITIVE"), labels = c("Negative", "Positive"))
+circ_data$CEA.Baseline <- factor(circ_data$CEA.Baseline, levels=c("NEGATIVE","POSITIVE"), labels = c("Normal", "Elevated"))
+circ_data$Gender <- factor(circ_data$Gender, levels = c("Female", "Male"))
+circ_data$Age.Group <- factor(circ_data$Age.Group, levels = c("1", "2"), labels = c("<70", ">70"))
+circ_data$PrimSite <- factor(circ_data$PrimSite, levels = c("Right-sided colon", "Left-sided colon"), labels = c("Right-sided", "Left-sided"))
+circ_data$NumLiverMetsGroup <- factor(circ_data$NumLiverMetsGroup, levels = c("1", "≥2"))
+circ_data$SizeLiverMetsmmGroup <- factor(circ_data$SizeLiverMetsmmGroup, levels = c("<50", "≥50"))
+circ_data$ECOG <- factor(circ_data$ECOG, levels = c("0", "1"))
+circ_data$pT <- factor(circ_data$pT, levels = c("T1-T2", "T3-T4"))
+circ_data$pN <- factor(circ_data$pN, levels = c("N0", "N1-N2"))
+circ_data$ACT <- factor(circ_data$ACT, levels = c("FALSE", "TRUE"), labels = c("Observation", "Chemotherapy"))
+circ_data$Postop.Complication <- factor(circ_data$Postop.Complication, levels = c("No", "Yes"))
+circ_data$Oxaliplatin.History <- factor(circ_data$Oxaliplatin.History, levels = c("No", "Yes"))
+circ_data$Mets.Type <- factor(circ_data$Mets.Type, levels = c("Metachronous", "Synchronous"))
+circ_data$MSI <- factor(circ_data$MSI, levels = c("MSS", "MSI-High"), labels = c("MSS", "MSI-High"))
+circ_data$BRAF.V600E <- factor(circ_data$BRAF.V600E, levels = c("WT", "MUT"), labels = c("Wild-Type", "V600E"))
+circ_data$RAS <- factor(circ_data$RAS, levels = c("WT", "MUT"), labels = c("Wild-Type", "Mutant"))
+surv_object <- Surv(time = circ_data$DFS.MRD.months, event = circ_data$DFS.Event) 
+cox_fit <- coxph(surv_object ~ ctDNA.Surveillance + CEA.Baseline + Age.Group + PrimSite + NumLiverMetsGroup + SizeLiverMetsmmGroup + pT + pN + RAS + Mets.Type + Postop.Complication + Oxaliplatin.History, data=circ_data) 
+ggforest(cox_fit, data = circ_data, main = "Multivariate Regression Model for DFS", refLabel = "Reference Group")
+test.ph <- cox.zph(cox_fit)
+```
+
+
+#OS by ctDNA at the MRD Window - pts with Radiological Recurrence
+```{r}
+rm(list=ls())
+setwd("~/Downloads")
+circ_data <- read.csv("Galaxy Liver Mets Data_20240626 Complete Dataset.csv")
+circ_data <- circ_data[circ_data$LiverMets=="TRUE",]
+circ_data <- circ_data[circ_data$RFS.Event=="TRUE",]
+circ_data <- circ_data[circ_data$ctDNA.MRD!="",]
+circ_data <- circ_data[circ_data$OS.MRD.months>=0,]
+circ_datadf <- as.data.frame(circ_data)
+
+survfit(Surv(time = circ_data$OS.MRD.months, event = circ_data$OS.Event)~ctDNA.MRD, data = circ_data)
+event_summary <- circ_data %>%
+  group_by(ctDNA.MRD) %>%
+  summarise(
+    Total = n(),
+    Events = sum(OS.Event),
+    Fraction = Events / n(),
+    Percentage = (Events / n()) * 100
+  )
+print(event_summary)
+surv_object <-Surv(time = circ_data$OS.MRD.months, event = circ_data$OS.Event)
+KM_curve <- survfit(surv_object ~ ctDNA.MRD, data = circ_data,conf.int=0.95,conf.type="log-log") 
+ggsurvplot(KM_curve, data = circ_data, pval = FALSE, conf.int = FALSE, risk.table = TRUE, break.time.by=6, palette=c("blue","red"), title="OS - Radiological Recurrence | ctDNA MRD window", ylab= "Overall Survival", xlab="Time from Landmark Time point (Months)", legend.labs=c("ctDNA Negative", "ctDNA Positive"), legend.title="")
+summary(KM_curve, times= c(24, 36))
+circ_data$ctDNA.MRD <- factor(circ_data$ctDNA.MRD, levels=c("NEGATIVE","POSITIVE"))
+cox_fit <- coxph(surv_object ~ ctDNA.MRD, data=circ_data) 
+ggforest(cox_fit,data = circ_data)
+summary(cox_fit)
+cox_fit_summary <- summary(cox_fit)
+
+# Extract values for HR, 95% CI, and p-value
+HR <- cox_fit_summary$coefficients[2]
+lower_CI <- cox_fit_summary$conf.int[3]
+upper_CI <- cox_fit_summary$conf.int[4]
+p_value <- cox_fit_summary$coefficients[5]
+label_text <- paste0("HR = ", round(HR, 2), " (", round(lower_CI, 2), "-", round(upper_CI, 2), "); p = ", round(p_value, 3))
+print(label_text)
+
+#Fisher test for OS percentages at 24 and 36 months
+os_times <- c(24, 36)
+p_values <- sapply(os_times, function(time) {
+  neg_count <- sum(circ_data$ctDNA.MRD == "NEGATIVE" & circ_data$OS.MRD.months >= time & circ_data$OS.Event == 0)
+  pos_count <- sum(circ_data$ctDNA.MRD == "POSITIVE" & circ_data$OS.MRD.months >= time & circ_data$OS.Event == 0)
+  neg_total <- sum(circ_data$ctDNA.MRD == "NEGATIVE")
+  pos_total <- sum(circ_data$ctDNA.MRD == "POSITIVE")
+  
+  neg_surv <- neg_total - sum(circ_data$ctDNA.MRD == "NEGATIVE" & circ_data$OS.Event == 1 & circ_data$OS.MRD.months < time)
+  pos_surv <- pos_total - sum(circ_data$ctDNA.MRD == "POSITIVE" & circ_data$OS.Event == 1 & circ_data$OS.MRD.months < time)
+  
+  surv_matrix <- matrix(c(neg_surv, pos_surv, neg_total - neg_surv, pos_total - pos_surv), nrow = 2)
+  test_result <- fisher.test(surv_matrix)
+  return(test_result$p.value)
+})
+names(p_values) <- paste0("p-value at ", os_times, " months")
+print(p_values)
+
+p_values_adjusted <- p.adjust(p_values, method = "bonferroni")
+names(p_values_adjusted) <- paste0("Corrected p-value at ", os_times, " months")
+print(p_values_adjusted)
+```
+
+#Percentage of ctDNA MRD Window positivity in pts with liver metastasis
+```{r}
+
+rm(list = ls())
+setwd("~/Downloads")
+circ_data <- read.csv("Galaxy Liver Mets Data_20240626 Complete Dataset.csv")
+circ_data <- circ_data %>%
+  filter(LiverMets == "TRUE" & RFS.Event == "TRUE" & ctDNA.MRD != "")
+circ_data$ctDNA.MRD <- factor(circ_data$ctDNA.MRD, levels = c("NEGATIVE", "POSITIVE"), labels = c("Negative", "Positive"))
+positive_rate <- sum(circ_data$ctDNA.MRD == "Positive" & grepl("liver", circ_data$RelSite, ignore.case = TRUE)) / sum(circ_data$ctDNA.MRD == "Positive") * 100
+positive_ci <- binconf(sum(circ_data$ctDNA.MRD == "Positive" & grepl("liver", circ_data$RelSite, ignore.case = TRUE)),
+                       sum(circ_data$ctDNA.MRD == "Positive"),
+                       alpha = 0.05)[c(2, 3)] * 100
+negative_rate <- sum(circ_data$ctDNA.MRD == "Negative" & grepl("liver", circ_data$RelSite, ignore.case = TRUE)) / sum(circ_data$ctDNA.MRD == "Negative") * 100
+negative_ci <- binconf(sum(circ_data$ctDNA.MRD == "Negative" & grepl("liver", circ_data$RelSite, ignore.case = TRUE)),
+                       sum(circ_data$ctDNA.MRD == "Negative"),
+                       alpha = 0.05)[c(2, 3)] * 100
+data <- data.frame(
+  ctDNA.MRD = c("Positive", "Negative"),
+  percentage = c(positive_rate, negative_rate),
+  lower_ci = c(positive_ci[1], negative_ci[1]),
+  upper_ci = c(positive_ci[2], negative_ci[2])
+)
+cross_tabs <- list(
+  table(circ_data$ctDNA.MRD, grepl("liver", circ_data$RelSite, ignore.case = TRUE)),
+  table(circ_data$ctDNA.MRD, grepl("lung", circ_data$RelSite, ignore.case = TRUE))
+)
+chi_tests <- lapply(cross_tabs, chisq.test)
+p_values <- sapply(chi_tests, function(test) test$p.value)
+num_tests <- length(p_values)  # Number of tests to be adjusted for
+p_values_adjusted <- p.adjust(p_values, method = "bonferroni", n = num_tests)
+print(data)
+print(cross_tabs)
+print(chi_tests)
+print(paste("Original p-values:", format.pval(p_values, digits = 4)))
+print(paste("Adjusted p-values (Bonferroni):", format.pval(p_values_adjusted, digits = 4)))
+barplot <- ggplot(data, aes(x = ctDNA.MRD, y = percentage, fill = ctDNA.MRD)) +
+  geom_bar(stat = "identity") +
+  geom_errorbar(aes(ymin = lower_ci, ymax = upper_ci), width = 0.2) +
+  geom_text(aes(label = paste0(round(percentage, 1), "%")), vjust = -0.5) +
+  labs(
+    x = "ctDNA status at the MRD status",
+    y = "Proportion of patients with recurrence in the liver",
+    caption = paste("Chi-squared test p-value: ", format.pval(p_values[1], digits = 4), 
+                    "\nAdjusted p-value (Bonferroni): ", format.pval(p_values_adjusted[1], digits = 4))
+  ) +
+  scale_y_continuous(expand = c(0, 0), limits = c(0, 100)) +
+  scale_fill_manual(values = c("Negative" = "blue", "Positive" = "red")) +
+  theme_minimal()
+print(barplot)
+```
+
+
+#Percentage of ctDNA MRD Window positivity in pts with lung metastasis
+```{r}
+rm(list = ls())
+setwd("~/Downloads")
+circ_data <- read.csv("Galaxy Liver Mets Data_20240626 Complete Dataset.csv")
+circ_data <- circ_data %>%
+  filter(LiverMets == "TRUE" & RFS.Event == "TRUE" & ctDNA.MRD != "")
+circ_data$ctDNA.MRD <- factor(circ_data$ctDNA.MRD, levels = c("NEGATIVE", "POSITIVE"), labels = c("Negative", "Positive"))
+positive_rate <- sum(circ_data$ctDNA.MRD == "Positive" & grepl("lung", circ_data$RelSite, ignore.case = TRUE)) / sum(circ_data$ctDNA.MRD == "Positive") * 100
+positive_ci <- binconf(sum(circ_data$ctDNA.MRD == "Positive" & grepl("lung", circ_data$RelSite, ignore.case = TRUE)),
+                       sum(circ_data$ctDNA.MRD == "Positive"),
+                       alpha = 0.05)[c(2, 3)] * 100
+negative_rate <- sum(circ_data$ctDNA.MRD == "Negative" & grepl("lung", circ_data$RelSite, ignore.case = TRUE)) / sum(circ_data$ctDNA.MRD == "Negative") * 100
+negative_ci <- binconf(sum(circ_data$ctDNA.MRD == "Negative" & grepl("lung", circ_data$RelSite, ignore.case = TRUE)),
+                       sum(circ_data$ctDNA.MRD == "Negative"),
+                       alpha = 0.05)[c(2, 3)] * 100
+data <- data.frame(
+  ctDNA.MRD = c("Positive", "Negative"),
+  percentage = c(positive_rate, negative_rate),
+  lower_ci = c(positive_ci[1], negative_ci[1]),
+  upper_ci = c(positive_ci[2], negative_ci[2])
+)
+
+cross_tabs <- list(
+  table(circ_data$ctDNA.MRD, grepl("lung", circ_data$RelSite, ignore.case = TRUE)),
+  table(circ_data$ctDNA.MRD, grepl("liver", circ_data$RelSite, ignore.case = TRUE))
+)
+chi_tests <- lapply(cross_tabs, chisq.test)
+p_values <- sapply(chi_tests, function(test) test$p.value)
+num_tests <- length(p_values)  # Number of tests to be adjusted for
+p_values_adjusted <- p.adjust(p_values, method = "bonferroni", n = num_tests)
+print(data)
+print(cross_tabs)
+print(chi_tests)
+print(paste("Original p-values:", format.pval(p_values, digits = 4)))
+print(paste("Adjusted p-values (Bonferroni):", format.pval(p_values_adjusted, digits = 4)))
+barplot <- ggplot(data, aes(x = ctDNA.MRD, y = percentage, fill = ctDNA.MRD)) +
+  geom_bar(stat = "identity") +
+  geom_errorbar(aes(ymin = lower_ci, ymax = upper_ci), width = 0.2) +
+  geom_text(aes(label = paste0(round(percentage, 1), "%")), vjust = -0.5) +
+  labs(
+    x = "ctDNA status at the MRD status",
+    y = "Proportion of patients with recurrence in the lung",
+    caption = paste("Chi-squared test p-value: ", format.pval(p_values[1], digits = 4), 
+                    "\nAdjusted p-value (Bonferroni): ", format.pval(p_values_adjusted[1], digits = 4))
+  ) +
+  scale_y_continuous(expand = c(0, 0), limits = c(0, 100)) +
+  scale_fill_manual(values = c("Negative" = "blue", "Positive" = "red")) +
+  theme_minimal()
+print(barplot)
+```
+
+
+#Barplot with Recurrence Sites (Liver vs Others) by ctDNA at the MRD Window
+```{r}
+rm(list=ls())
+setwd("~/Downloads")
+circ_data <- read.csv("Galaxy Liver Mets Data_20240626 Complete Dataset.csv")
+circ_data <- circ_data[circ_data$LiverMets=="TRUE",]
+circ_data <- circ_data[circ_data$RFS.Event=="TRUE",]
+
+circ_data$ctDNA.MRD <- factor(circ_data$ctDNA.MRD, levels = c("NEGATIVE", "POSITIVE"), labels = c("Negative", "Positive"))
+circ_data$Liver <- factor(circ_data$Liver, levels = c("FALSE", "TRUE"), labels = c("Others", "Liver"))
+contingency_table <- table(circ_data$ctDNA.MRD, circ_data$Liver)
+chi_square_test <- chisq.test(contingency_table)
+print(chi_square_test)
+fisher_exact_test <- fisher.test(contingency_table)
+print(fisher_exact_test)
+print(contingency_table)
+p_values <- c(chi_square_test$p.value, fisher_exact_test$p.value)
+p_adjusted <- p.adjust(p_values, method = "bonferroni")
+names(p_adjusted) <- c("Chi-Square Test", "Fisher's Exact Test")
+print(p_adjusted)
+table_df <- as.data.frame(contingency_table)
+table_df$Total <- ave(table_df$Freq, table_df$Var1, FUN = sum)
+table_df$Percentage <- table_df$Freq / table_df$Total
+table_df$MiddlePercentage <- table_df$Percentage / 2
+ggplot(table_df, aes(x = Var1, y = Percentage, fill = Var2)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(y = MiddlePercentage, label = Freq), position = "stack", color = "black", vjust = 1.5, size = 7) +
+  theme_minimal() +
+  labs(title = "Patients with Radiological Recurrence", 
+       x = "ctDNA at the MRD Window", 
+       y = "Patients (%)", 
+       fill = "Recurrence Site",
+       caption = paste("Chi-squared test p-value: ", format.pval(chi_square_test$p.value), "; Bonferroni corrected p-value: ", format.pval(p_adjusted["Chi-Square Test"]))) +
+  scale_y_continuous(labels = scales::percent_format()) +
+  scale_fill_manual(values = c("Others" = "blue", "Liver" = "red")) + # define custom colors
+  theme(axis.text.x = element_text(angle = 0, hjust = 1.5, size = 14), # increase x-axis text size
+        axis.text.y = element_text(size = 14, color = "black"), # increase y-axis text size
+        axis.title.x = element_text(size = 14, color = "black"), # increase x-axis label size
+        axis.title.y = element_text(size = 14, color = "black"), # increase y-axis label size
+        legend.text = element_text(size = 12, color = "black"))  # increase Recurrence label size
+```
+
+#Table with recurrence sites by ctDNA at the MRD Window
+```{r}
+rm(list=ls())
+setwd("~/Downloads")
+circ_data <- read.csv("Galaxy Liver Mets Data_20240626 Complete Dataset.csv")
+circ_data <- circ_data[circ_data$LiverMets=="TRUE",]
+circ_data <- circ_data[circ_data$RFS.Event=="TRUE",]
+
+circ_data_subset1 <- circ_data %>%
+  select(
+    Rec.Site) %>%
+  mutate(
+    Rec.Site = factor(Rec.Site, levels = c("Local/LN", "Liver", "Lung", "Peritoneum", "Peritoneum & Others", "Brain")))
+
+circ_data1 <- read.csv("Galaxy Liver Mets Data_20240626 Complete Dataset.csv")
+circ_data1 <- circ_data1[circ_data1$LiverMets=="TRUE",]
+circ_data <- circ_data[circ_data$RFS.Event=="TRUE",]
+
+circ_data_subset2 <- circ_data %>%
+  select(
+    Rec.Site,
+    ctDNA.MRD) %>%
+  mutate(
+    Rec.Site = factor(Rec.Site, levels = c("Local/LN", "Liver", "Lung", "Peritoneum", "Peritoneum & Others", "Brain")),
+    ctDNA.MRD = factor(ctDNA.MRD, levels = c("NEGATIVE", "POSITIVE")))
+Overall <- circ_data_subset1 %>%
+  tbl_summary(
+    statistic = list(
+      all_continuous() ~ "{median} ({min} - {max})",
+      all_categorical() ~ "{n} ({p}%)")) %>%
+  bold_labels()
+Overall
+
+ByctDNA_MRD <- circ_data_subset2 %>%
+  tbl_summary(
+    by = ctDNA.MRD, # Subgroup by ctDNA.MRD
+    statistic = list(
+      all_continuous() ~ "{median} ({min} - {max})",
+      all_categorical() ~ "{n} ({p}%)")) %>%
+  add_p(test = all_categorical() ~ "fisher.test", pvalue_fun = ~style_pvalue(p.adjust(.x, method = "bonferroni"))) %>%
+  bold_labels()
+ByctDNA_MRD
+
+merged_table <- tbl_merge(tbls=list(Overall, ByctDNA_MRD))
+merged_table
+
+fit1 <- as_flex_table(
+  merged_table,
+  include = everything(),
+  return_calls = FALSE,
+  strip_md_bold = TRUE)
+fit1
+save_as_docx(fit1, path= "~/Downloads/merged_table.docx")
+```
+
+
+#Detection ctDNA rates based on sites of relapse
+```{r}
+rm(list=ls())
+setwd("~/Downloads")
+circ_data <- read.csv("Galaxy Liver Mets Data_20240626 Complete Dataset.csv")
+circ_data <- circ_data[circ_data$LiverMets=="TRUE",]
+circ_data <- circ_data[circ_data$RFS.Event=="TRUE",]
+circ_data <- subset(circ_data, !is.na(Rec.Site))
+
+# Create a table of counts for the "Rec.Site" variable
+relsite_counts <- table(circ_data$Rec.Site)
+relsite_df <- as.data.frame(relsite_counts)
+names(relsite_df) <- c("RelSite", "Count")
+circ_data_pos_mrd <- circ_data[circ_data$ctDNA.MRD=="POSITIVE",]
+circ_data_pos_anytime <- circ_data[circ_data$ctDNA.anytime=="POSITIVE",]
+pos_counts_mrd <- table(circ_data_pos_mrd$Rec.Site)
+pos_counts_anytime <- table(circ_data_pos_anytime$Rec.Site)
+relsite_df$MRDPos_Count <- ifelse(is.na(match(relsite_df$RelSite, names(pos_counts_mrd))), 0, pos_counts_mrd[match(relsite_df$RelSite, names(pos_counts_mrd))])
+relsite_df$MRDPos_Count[is.na(relsite_df$MRDPos_Count)] <- 0
+relsite_df$AnytimePos_Count <- ifelse(is.na(match(relsite_df$RelSite, names(pos_counts_anytime))), 0, pos_counts_anytime[match(relsite_df$RelSite, names(pos_counts_anytime))])
+relsite_df$AnytimePos_Count[is.na(relsite_df$AnytimePos_Count)] <- 0
+relsite_df$Percent <- (relsite_df$Count / sum(relsite_df$Count)) * 100
+relsite_df$MRDPos_Percent <- (relsite_df$MRDPos_Count / relsite_df$Count) * 100
+relsite_df$AnytimePos_Percent <- (relsite_df$AnytimePos_Count / relsite_df$Count) * 100
+total_observations <- sum(relsite_df$Count)
+total_pos_mrd <- sum(relsite_df$MRDPos_Count)
+total_pos_anytime <- sum(relsite_df$AnytimePos_Count)
+total_row <- data.frame(RelSite = "Total", Count = total_observations, MRDPos_Count = total_pos_mrd, AnytimePos_Count = total_pos_anytime, Percent = 100, MRDPos_Percent = (total_pos_mrd / total_observations) * 100, AnytimePos_Percent = (total_pos_anytime / total_observations) * 100)
+relsite_df <- rbind(relsite_df, total_row)
+print(relsite_df)
+
+ft <- flextable(relsite_df)
+doc <- read_docx() %>%
+  body_add_flextable(value = ft)
+print(doc, target = "relsite_df.docx")
+```
+
